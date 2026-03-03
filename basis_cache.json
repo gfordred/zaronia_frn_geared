@@ -1,0 +1,129 @@
+{
+  "2026-03-06_100.0_5_2.00": {
+    "timestamp": "2026-03-03T10:07:14.638791",
+    "settlement_date": "2026-03-06",
+    "nominal": 100.0,
+    "lookback": 5,
+    "zaronia_spread": 1.9999999999999574,
+    "results": [
+      {
+        "Term (Y)": 0.25,
+        "JIBAR PV (OIS Disc)": 100.0,
+        "JIBAR PV (JIBAR Disc)": 100.0,
+        "ZARONIA PV (Flat)": 100.01530025777909,
+        "Implied ZARONIA Spread (bps)": 6.2379147884650195,
+        "Basis (bps)": 6.2379147884650195,
+        "Disc. Effect (bps)": 0.0
+      },
+      {
+        "Term (Y)": 0.5,
+        "JIBAR PV (OIS Disc)": 100.0,
+        "JIBAR PV (JIBAR Disc)": 100.0,
+        "ZARONIA PV (Flat)": 100.06507135191372,
+        "Implied ZARONIA Spread (bps)": 13.369763210768067,
+        "Basis (bps)": 13.369763210768067,
+        "Disc. Effect (bps)": 0.0
+      },
+      {
+        "Term (Y)": 1,
+        "JIBAR PV (OIS Disc)": 100.0,
+        "JIBAR PV (JIBAR Disc)": 100.00000000000001,
+        "ZARONIA PV (Flat)": 100.24874801335562,
+        "Implied ZARONIA Spread (bps)": 25.743070554633668,
+        "Basis (bps)": 25.743070554633668,
+        "Disc. Effect (bps)": 1.4210854715202004e-14
+      },
+      {
+        "Term (Y)": 2,
+        "JIBAR PV (OIS Disc)": 100.0,
+        "JIBAR PV (JIBAR Disc)": 100.0,
+        "ZARONIA PV (Flat)": 100.64992131726162,
+        "Implied ZARONIA Spread (bps)": 34.80126501784676,
+        "Basis (bps)": 34.80126501784676,
+        "Disc. Effect (bps)": 0.0
+      },
+      {
+        "Term (Y)": 3,
+        "JIBAR PV (OIS Disc)": 99.99999999999999,
+        "JIBAR PV (JIBAR Disc)": 100.00000000000001,
+        "ZARONIA PV (Flat)": 100.8819833553792,
+        "Implied ZARONIA Spread (bps)": 32.51374460253141,
+        "Basis (bps)": 32.51374460253141,
+        "Disc. Effect (bps)": 2.842170943040401e-14
+      },
+      {
+        "Term (Y)": 5,
+        "JIBAR PV (OIS Disc)": 99.99999999999997,
+        "JIBAR PV (JIBAR Disc)": 100.00000000000003,
+        "ZARONIA PV (Flat)": 100.51777193340847,
+        "Implied ZARONIA Spread (bps)": 12.224809908006623,
+        "Basis (bps)": 12.224809908006623,
+        "Disc. Effect (bps)": 5.684341886080802e-14
+      },
+      {
+        "Term (Y)": 7,
+        "JIBAR PV (OIS Disc)": 99.99999999999994,
+        "JIBAR PV (JIBAR Disc)": 100.0,
+        "ZARONIA PV (Flat)": 98.98699527149415,
+        "Implied ZARONIA Spread (bps)": -18.359891393529644,
+        "Basis (bps)": -18.359891393529644,
+        "Disc. Effect (bps)": 5.684341886080802e-14
+      },
+      {
+        "Term (Y)": 10,
+        "JIBAR PV (OIS Disc)": 99.99999999999996,
+        "JIBAR PV (JIBAR Disc)": 100.0,
+        "ZARONIA PV (Flat)": 95.96867768772255,
+        "Implied ZARONIA Spread (bps)": -57.35938805223295,
+        "Basis (bps)": -57.35938805223295,
+        "Disc. Effect (bps)": 4.263256414560601e-14
+      },
+      {
+        "Term (Y)": 15,
+        "JIBAR PV (OIS Disc)": 99.99999999999994,
+        "JIBAR PV (JIBAR Disc)": 100.00000000000003,
+        "ZARONIA PV (Flat)": 92.05222361364228,
+        "Implied ZARONIA Spread (bps)": -90.48725852889491,
+        "Basis (bps)": -90.48725852889491,
+        "Disc. Effect (bps)": 8.526512829121202e-14
+      }
+    ]
+  },
+  "2026-03-02_100.0_5_2.00": {
+    "timestamp": "2026-03-03T14:14:42.199593",
+    "results": [
+      {
+        "Term (Y)": 0.25,
+        "Basis (bps)": 3.871727029737978
+      },
+      {
+        "Term (Y)": 0.5,
+        "Basis (bps)": 11.353074306538574
+      },
+      {
+        "Term (Y)": 1,
+        "Basis (bps)": 24.26104037200316
+      },
+      {
+        "Term (Y)": 2,
+        "Basis (bps)": 34.11632615361545
+      },
+      {
+        "Term (Y)": 3,
+        "Basis (bps)": 31.919766373356282
+      },
+      {
+        "Term (Y)": 5,
+        "Basis (bps)": 10.779527785278187
+      },
+      {
+        "Term (Y)": 7,
+        "Basis (bps)": -21.145950016182304
+      },
+      {
+        "Term (Y)": 10,
+        "Basis (bps)": -62.38184026479362
+      }
+    ]
+  }
+}
