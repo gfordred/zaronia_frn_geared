@@ -197,7 +197,7 @@ def calculate_complete_historical_cashflows(portfolio, repo_trades, inception_da
         quarter = 0
         while current <= min(maturity, end_date):
             if current >= inception_date and current != start:
-                coupon_rate = (jibar_rate + spread) / 100
+                coupon_rate = (jibar_rate / 100) + (spread / 10000)  # Fixed: spread is in bps
                 coupon_amount = notional * coupon_rate * 0.25
                 
                 all_cashflows.append({
@@ -237,7 +237,7 @@ def calculate_complete_historical_cashflows(portfolio, repo_trades, inception_da
         # Far leg
         if inception_date <= end_date_repo <= end_date:
             days = (end_date_repo - spot_date).days
-            repo_rate = (jibar_rate + spread) / 100
+            repo_rate = (jibar_rate / 100) + (spread / 10000)  # Fixed: spread is in bps
             interest = cash * repo_rate * (days / 365.0)
             
             far_amount = -(cash + interest) if direction == 'borrow_cash' else (cash + interest)
@@ -418,19 +418,29 @@ def render_3d_portfolio_surfaces(portfolio, repo_trades, df_historical, df_zaron
     for current_date in date_range[:50]:  # Limit to 50 points for performance
         current_date_obj = current_date.date()
         
-        # Calculate portfolio notional
-        total_notional = sum(
-            pos.get('notional', 0) for pos in portfolio
-            if (pos.get('start_date') if isinstance(pos.get('start_date'), date) else datetime.strptime(pos.get('start_date'), '%Y-%m-%d').date()) <= current_date_obj
-        )
+        # Calculate portfolio notional (only active positions)
+        total_notional = 0
+        for pos in portfolio:
+            start = pos.get('start_date')
+            maturity = pos.get('maturity')
+            if isinstance(start, str):
+                start = datetime.strptime(start, '%Y-%m-%d').date()
+            if isinstance(maturity, str):
+                maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
+            
+            # Only count if position is active on current_date
+            if start <= current_date_obj <= maturity:
+                total_notional += pos.get('notional', 0)
         
-        # Calculate repo outstanding
+        # Calculate repo outstanding (only active repos)
         repo_outstanding = 0
         for repo in repo_trades:
             spot = repo['spot_date'] if isinstance(repo['spot_date'], date) else datetime.strptime(repo['spot_date'], '%Y-%m-%d').date()
             end = repo['end_date'] if isinstance(repo['end_date'], date) else datetime.strptime(repo['end_date'], '%Y-%m-%d').date()
+            direction = repo.get('direction', 'borrow_cash')
             
-            if spot <= current_date_obj <= end:
+            # Only count borrow_cash repos that are active
+            if direction == 'borrow_cash' and spot <= current_date_obj <= end:
                 repo_outstanding += repo.get('cash_amount', 0)
         
         gearing = repo_outstanding / total_notional if total_notional > 0 else 0

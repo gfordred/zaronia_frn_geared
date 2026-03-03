@@ -587,9 +587,9 @@ def render_composition_over_time(portfolio, repo_trades):
     fig_yields.update_traces(
         marker=dict(
             sizemode='diameter',
-            sizeref=2.*max(df_yields['Notional (M)'])/(80.**2),  # Increased from 40 to 80 for larger bubbles
-            sizemin=8,  # Increased minimum size for better visibility
-            line=dict(width=2, color='white')
+            sizeref=2.*max(df_yields['Notional (M)'])/(20.**2),  # Reduced for much smaller bubbles
+            sizemin=4,  # Smaller minimum size
+            line=dict(width=1, color='white')
         )
     )
     

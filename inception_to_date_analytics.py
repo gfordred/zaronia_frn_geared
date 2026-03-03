@@ -249,10 +249,13 @@ def calculate_risk_evolution(portfolio, inception_date, end_date, dv01_per_posit
                 notional = pos.get('notional', 0)
                 total_notional += notional
                 
-                # Estimate DV01/CS01
+                # Estimate DV01/CS01 (more realistic values)
                 years_to_mat = (maturity - current_date_obj).days / 365.25
-                dv01 = notional * years_to_mat * 0.0001  # Simplified
-                cs01 = dv01 * 0.5  # Simplified
+                # DV01 = notional * duration * 0.01% (1bp move)
+                # For FRNs, duration is approximately time to next reset (0.25 years)
+                duration = min(0.25, years_to_mat)  # FRN duration ~3 months
+                dv01 = notional * duration * 0.0001  # 1bp sensitivity
+                cs01 = notional * years_to_mat * 0.0001 * 0.3  # Spread sensitivity
                 
                 total_dv01 += dv01
                 total_cs01 += cs01
