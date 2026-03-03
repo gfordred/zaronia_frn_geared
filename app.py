@@ -38,6 +38,8 @@ try:
         render_risk_evolution
     )
     from tab_descriptions import render_tab_description
+    from portfolio_time_series import render_portfolio_time_series
+    from funding_risk_analysis import render_funding_risk_analysis
     
     MODULES_LOADED = True
     print("✓ ALL enhancement modules loaded successfully")
@@ -1792,6 +1794,119 @@ try:
             available_cols = [col for col in recent_cols if col in df_merged.columns]
             st.dataframe(df_merged[available_cols].tail(20), use_container_width=True)
             
+            # Swap Yield Curve Chart
+            st.markdown("---")
+            st.markdown("##### 📊 Complete Yield Curve (All Instruments)")
+            
+            # Get latest rates
+            latest_data = df_merged.iloc[-1]
+            
+            # Calculate changes
+            try:
+                week_ago = df_merged.iloc[-6] if len(df_merged) >= 6 else df_merged.iloc[0]
+                month_ago = df_merged.iloc[-22] if len(df_merged) >= 22 else df_merged.iloc[0]
+                ytd_start = df_merged[df_merged.index.year == date.today().year].iloc[0] if len(df_merged[df_merged.index.year == date.today().year]) > 0 else df_merged.iloc[0]
+            except:
+                week_ago = month_ago = ytd_start = df_merged.iloc[0]
+            
+            # Build curve data
+            curve_data = []
+            
+            # ZARONIA O/N
+            if 'ZARONIA' in df_merged.columns:
+                curve_data.append({
+                    'Instrument': 'ZARONIA O/N',
+                    'Type': 'OIS',
+                    'Term': 0.003,  # ~1 day
+                    'Rate': latest_data['ZARONIA'],
+                    '1W Δ': latest_data['ZARONIA'] - week_ago.get('ZARONIA', latest_data['ZARONIA']),
+                    '1M Δ': latest_data['ZARONIA'] - month_ago.get('ZARONIA', latest_data['ZARONIA']),
+                    'YTD Δ': latest_data['ZARONIA'] - ytd_start.get('ZARONIA', latest_data['ZARONIA'])
+                })
+            
+            # JIBAR 3M
+            if 'JIBAR3M' in df_merged.columns:
+                curve_data.append({
+                    'Instrument': 'JIBAR 3M',
+                    'Type': 'Deposit',
+                    'Term': 0.25,
+                    'Rate': latest_data['JIBAR3M'],
+                    '1W Δ': latest_data['JIBAR3M'] - week_ago.get('JIBAR3M', latest_data['JIBAR3M']),
+                    '1M Δ': latest_data['JIBAR3M'] - month_ago.get('JIBAR3M', latest_data['JIBAR3M']),
+                    'YTD Δ': latest_data['JIBAR3M'] - ytd_start.get('JIBAR3M', latest_data['JIBAR3M'])
+                })
+            
+            # FRAs
+            fra_map = {'FRA3X6': (0.5, 'FRA'), 'FRA6X9': (0.75, 'FRA'), 'FRA9X12': (1.0, 'FRA')}
+            for fra_name, (term, inst_type) in fra_map.items():
+                if fra_name in df_merged.columns:
+                    curve_data.append({
+                        'Instrument': fra_name,
+                        'Type': inst_type,
+                        'Term': term,
+                        'Rate': latest_data[fra_name],
+                        '1W Δ': latest_data[fra_name] - week_ago.get(fra_name, latest_data[fra_name]),
+                        '1M Δ': latest_data[fra_name] - month_ago.get(fra_name, latest_data[fra_name]),
+                        'YTD Δ': latest_data[fra_name] - ytd_start.get(fra_name, latest_data[fra_name])
+                    })
+            
+            # Swaps
+            swap_map = {'SASW2': 2, 'SASW3': 3, 'SASW5': 5, 'SASW7': 7, 'SASW10': 10, 'SASW15': 15, 'SASW20': 20}
+            for swap_name, term in swap_map.items():
+                if swap_name in df_merged.columns:
+                    curve_data.append({
+                        'Instrument': swap_name,
+                        'Type': 'Swap',
+                        'Term': term,
+                        'Rate': latest_data[swap_name],
+                        '1W Δ': latest_data[swap_name] - week_ago.get(swap_name, latest_data[swap_name]),
+                        '1M Δ': latest_data[swap_name] - month_ago.get(swap_name, latest_data[swap_name]),
+                        'YTD Δ': latest_data[swap_name] - ytd_start.get(swap_name, latest_data[swap_name])
+                    })
+            
+            df_curve = pd.DataFrame(curve_data)
+            
+            # Display table with changes
+            st.dataframe(df_curve.style.format({
+                'Term': '{:.2f}',
+                'Rate': '{:.4f}',
+                '1W Δ': '{:+.2f}',
+                '1M Δ': '{:+.2f}',
+                'YTD Δ': '{:+.2f}'
+            }), use_container_width=True, hide_index=True)
+            
+            # Yield curve chart
+            fig_curve = go.Figure()
+            
+            # Color by type
+            type_colors = {'OIS': '#9b59b6', 'Deposit': '#00d4ff', 'FRA': '#ffa500', 'Swap': '#00ff88'}
+            
+            for inst_type in df_curve['Type'].unique():
+                df_type = df_curve[df_curve['Type'] == inst_type]
+                fig_curve.add_trace(go.Scatter(
+                    x=df_type['Term'],
+                    y=df_type['Rate'],
+                    mode='lines+markers',
+                    name=inst_type,
+                    line=dict(color=type_colors.get(inst_type, '#ffffff'), width=3),
+                    marker=dict(size=10),
+                    hovertemplate='<b>%{text}</b><br>Term: %{x:.2f}Y<br>Rate: %{y:.4f}%<extra></extra>',
+                    text=df_type['Instrument']
+                ))
+            
+            fig_curve.update_layout(
+                title='Complete ZAR Yield Curve',
+                xaxis_title='Term (Years)',
+                yaxis_title='Rate (%)',
+                template='plotly_dark',
+                height=500,
+                hovermode='closest',
+                showlegend=True,
+                legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+            )
+            
+            st.plotly_chart(fig_curve, use_container_width=True)
+            
         elif df_historical is not None:
             # Fallback if ZARONIA not available
             fig_hist = px.line(df_historical, x='Date', y=['JIBAR3M', 'SASW5', 'SASW10'],
@@ -2516,6 +2631,7 @@ try:
                 "📊 Current Valuation",
                 "💰 Yield Attribution", 
                 "📈 NAV Index",
+                "📉 Time Series",
                 "🕰️ Time Travel",
                 "✏️ Edit Portfolio"
             ])
@@ -2556,13 +2672,8 @@ try:
             with portfolio_tabs[2]:
                 if MODULES_LOADED:
                     render_nav_index(portfolio_positions, repo_trades)
-                else:
-                    st.info("💡 NAV index module not loaded. Install enhancement modules.")
-            
-            
-                
-                # Add inception-to-date analytics
-                if MODULES_LOADED:
+                    
+                    # Add inception-to-date analytics
                     st.markdown("---")
                     st.markdown("### 📊 Complete History Since Inception")
                     
@@ -2571,9 +2682,18 @@ try:
                     st.markdown("---")
                     
                     render_risk_evolution(portfolio_positions)
+                else:
+                    st.info("💡 NAV index module not loaded. Install enhancement modules.")
             
-            # TAB 4: Time Travel
+            # TAB 4: Time Series
             with portfolio_tabs[3]:
+                if MODULES_LOADED:
+                    render_portfolio_time_series(portfolio_positions, repo_trades)
+                else:
+                    st.info("💡 Portfolio time series module not loaded.")
+            
+            # TAB 5: Time Travel
+            with portfolio_tabs[4]:
                 st.markdown("##### 🕰️ Time Travel - Historical Portfolio Analysis")
                 
                 st.info("""
@@ -2691,8 +2811,8 @@ try:
                     # 3D portfolio surfaces
                     render_3d_portfolio_surfaces(portfolio_positions, repo_trades, df_historical, df_zaronia)
             
-            # TAB 5: Edit Portfolio
-            with portfolio_tabs[4]:
+            # TAB 6: Edit Portfolio
+            with portfolio_tabs[5]:
                 if MODULES_LOADED:
                     render_easy_portfolio_editor(portfolio_positions, save_portfolio)
                 else:
@@ -2712,6 +2832,7 @@ try:
         repo_subtabs = st.tabs([
             "📊 Dashboard",
             "📋 Master Table",
+            "⚠️ Funding Risk",
             "✏️ Edit Trades",
             "➕ Add Trade"
         ])
@@ -2774,8 +2895,15 @@ try:
                 if repo_trades:
                     st.dataframe(pd.DataFrame(repo_trades), use_container_width=True)
         
-        # TAB 3: Edit Trades
+        # TAB 3: Funding Risk
         with repo_subtabs[2]:
+            if MODULES_LOADED:
+                render_funding_risk_analysis(portfolio_positions, repo_trades)
+            else:
+                st.info("💡 Funding risk analysis module not loaded.")
+        
+        # TAB 4: Edit Trades
+        with repo_subtabs[3]:
             if MODULES_LOADED:
                 render_easy_repo_editor(repo_trades, portfolio_positions, save_repo_trades)
             else:
@@ -2783,8 +2911,8 @@ try:
                 st.markdown("##### Manual JSON Editing")
                 st.json({"trades": repo_trades})
         
-        # TAB 4: Add Trade
-        with repo_subtabs[3]:
+        # TAB 5: Add Trade
+        with repo_subtabs[4]:
             st.markdown("##### Add New Repo Trade")
             with st.expander("➕ Add New Repo Trade", expanded=True):
                 col1, col2 = st.columns(2)

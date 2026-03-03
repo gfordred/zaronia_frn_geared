@@ -348,6 +348,7 @@ def render_yield_attribution(portfolio, repo_trades, jibar_rate=8.0):
         x=[s['Gearing'] for s in scenario_data],
         y=[s['Net Yield (%)'] for s in scenario_data],
         mode='lines+markers',
+        name='Net Yield',
         line=dict(color='#ffa500', width=3),
         marker=dict(size=12),
         text=[f"{s['Net Yield (%)']:.2f}%" for s in scenario_data],
@@ -586,9 +587,9 @@ def render_composition_over_time(portfolio, repo_trades):
     fig_yields.update_traces(
         marker=dict(
             sizemode='diameter',
-            sizeref=2.*max(df_yields['Notional (M)'])/(40.**2),
-            sizemin=4,
-            line=dict(width=1, color='white')
+            sizeref=2.*max(df_yields['Notional (M)'])/(80.**2),  # Increased from 40 to 80 for larger bubbles
+            sizemin=8,  # Increased minimum size for better visibility
+            line=dict(width=2, color='white')
         )
     )
     
