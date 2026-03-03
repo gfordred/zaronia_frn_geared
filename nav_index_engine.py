@@ -203,7 +203,14 @@ def calculate_daily_nav_index(portfolio, repo_trades, inception_date, end_date,
         # NAV = Previous NAV + Cashflows + Accrual Change
         # MTM is not added to NAV as it's a valuation metric, not a cash flow
         nav_change = daily_cashflow + accrual_change
+        previous_nav = current_nav
         current_nav = current_nav + nav_change
+        
+        # 5. Calculate Daily Return (%)
+        # Return should exclude cashflows and accruals - only reflect organic performance (MTM)
+        # Daily Return = MTM Change / Previous NAV
+        # This gives the true portfolio performance excluding cash additions/withdrawals
+        daily_return_pct = (mtm_change / previous_nav * 100) if previous_nav > 0 else 0
         
         # Store data
         nav_data.append({
@@ -215,7 +222,7 @@ def calculate_daily_nav_index(portfolio, repo_trades, inception_date, end_date,
             'MTM': current_mtm,
             'MTM Change': mtm_change,
             'Daily Change': nav_change,
-            'Daily Return (%)': (nav_change / (current_nav - nav_change) * 100) if (current_nav - nav_change) > 0 else 0,
+            'Daily Return (%)': daily_return_pct,
             'Cashflow Details': ' | '.join(cashflow_details) if cashflow_details else 'No activity'
         })
         
