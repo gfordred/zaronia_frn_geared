@@ -182,7 +182,7 @@ def calculate_daily_nav_index(portfolio, repo_trades, inception_date, end_date,
             # Far leg
             if current_date_obj == end_date_repo:
                 days = (end_date_repo - spot_date).days
-                repo_rate = (jibar_rate + spread) / 100
+                repo_rate = (jibar_rate / 100) + (spread / 10000)
                 interest = cash * repo_rate * (days / 365.0)
                 
                 far_cf = -(cash + interest) if direction == 'borrow_cash' else (cash + interest)
@@ -430,7 +430,7 @@ def render_repo_master_table_and_summary(repo_trades, jibar_rate=8.0):
         collateral = repo.get('collateral_id', 'None')
         
         days = (end_date - spot_date).days
-        repo_rate = (jibar_rate + spread) / 100
+        repo_rate = (jibar_rate / 100) + (spread / 10000)
         interest = cash * repo_rate * (days / 365.0)
         
         near_cf = cash if direction == 'borrow_cash' else -cash

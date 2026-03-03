@@ -60,7 +60,7 @@ except ImportError as e:
 st.set_page_config(page_title="ZAR FRN Trading Platform", page_icon="🇿🇦", layout="wide")
 
 # VERSION MARKER - If you see this, new code is running
-APP_VERSION = "v3.0 - Bloomberg-Beating Edition - 2026-03-03"
+APP_VERSION = "v2.0 - Updated 2026-03-03 13:30"
 
 # Print to terminal to confirm new code is running
 print("\n" + "="*70)
@@ -2559,19 +2559,6 @@ try:
                 else:
                     st.info("💡 NAV index module not loaded. Install enhancement modules.")
             
-            
-                
-                # Add inception-to-date analytics
-                if MODULES_LOADED:
-                    st.markdown("---")
-                    st.markdown("### 📊 Complete History Since Inception")
-                    
-                    render_inception_cashflows(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
-                    
-                    st.markdown("---")
-                    
-                    render_risk_evolution(portfolio_positions)
-            
             # TAB 4: Time Travel
             with portfolio_tabs[3]:
                 st.markdown("##### 🕰️ Time Travel - Historical Portfolio Analysis")
@@ -2676,21 +2663,6 @@ try:
                         })
                     st.dataframe(pd.DataFrame(repo_data), use_container_width=True, hide_index=True)
             
-            
-                
-                # Advanced Time Travel Features
-                if MODULES_LOADED:
-                    st.markdown("---")
-                    st.markdown("### 📊 Advanced Historical Analysis")
-                    
-                    # Complete settlement account
-                    render_complete_historical_settlement_account(portfolio_positions, repo_trades)
-                    
-                    st.markdown("---")
-                    
-                    # 3D portfolio surfaces
-                    render_3d_portfolio_surfaces(portfolio_positions, repo_trades, df_historical, df_zaronia)
-            
             # TAB 5: Edit Portfolio
             with portfolio_tabs[4]:
                 if MODULES_LOADED:
@@ -2738,34 +2710,7 @@ try:
             else:
                 st.info("No repo trades.")
         
-        
-                
-                # Historical Analytics
-                if MODULES_LOADED:
-                    st.markdown("---")
-                    st.markdown("### 📈 Historical Repo Analytics")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        hist_start = st.date_input("From", value=date.today() - timedelta(days=180), key="repo_hist_start")
-                    with col2:
-                        hist_end = st.date_input("To", value=date.today(), key="repo_hist_end")
-                    
-                    render_repo_outstanding_chart(repo_trades, hist_start, hist_end)
-                    
-                    st.markdown("---")
-                    
-                    render_gearing_evolution_chart(portfolio_positions, repo_trades, hist_start, hist_end)
-                    
-                    st.markdown("---")
-                    
-                    render_cashflow_waterfall(portfolio_positions, repo_trades, hist_start, hist_end, rates.get('JIBAR3M', 8.0))
-                    
-                    st.markdown("---")
-                    
-                    render_yield_evolution(portfolio_positions, repo_trades, hist_start, hist_end, rates.get('JIBAR3M', 8.0))
-            
-            # TAB 2: Master Table
+        # TAB 2: Master Table
         with repo_subtabs[1]:
             if MODULES_LOADED:
                 render_repo_master_table_and_summary(repo_trades, rates.get('JIBAR3M', 8.0))
