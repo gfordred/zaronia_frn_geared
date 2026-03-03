@@ -2100,7 +2100,7 @@ try:
                 'Market Rate (%)': '{:.4f}',
                 'Implied Fwd (%)': '{:.4f}',
                 'Error (bps)': '{:.2f}'
-            }).background_gradient(subset=['Error (bps)'], cmap='RdYlGn'),
+            }),
             use_container_width=True, hide_index=True)
             
             # FRA curve chart
