@@ -1860,7 +1860,7 @@ try:
             # Display with formatting
             st.dataframe(df_market.style.format({
                 'Rate (%)': '{:.4f}'
-            }).background_gradient(subset=['Rate (%)'], cmap='RdYlGn_r'),
+            }),
             use_container_width=True, hide_index=True)
             
             # Market rate chart
@@ -1939,7 +1939,7 @@ try:
                 'Spread (bps)': '{:.2f}',
                 'JIBAR DF': '{:.6f}',
                 'ZARONIA DF': '{:.6f}'
-            }).background_gradient(subset=['JIBAR Zero (%)', 'ZARONIA Zero (%)'], cmap='RdYlGn_r'),
+            }),
             use_container_width=True, hide_index=True)
             
             # Interactive zero curve chart
