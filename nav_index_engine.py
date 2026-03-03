@@ -57,7 +57,7 @@ def calculate_daily_accrued(portfolio, current_date, jibar_rate=8.0):
             days_accrued = (current_date - last_coupon).days
             
             # Accrued interest
-            coupon_rate = (jibar_rate + spread) / 100
+            coupon_rate = (jibar_rate / 100) + (spread / 10000)
             accrued = notional * coupon_rate * (days_accrued / 365.0)
             
             total_accrued += accrued
@@ -282,7 +282,12 @@ def render_nav_index(portfolio, repo_trades):
     # Summary metrics
     current_nav = df_nav['NAV'].iloc[-1]
     initial_nav = df_nav['NAV'].iloc[0]
-    total_return = ((current_nav - initial_nav) / initial_nav) * 100
+    total_return_pct = ((current_nav - initial_nav) / initial_nav) * 100
+    
+    # Calculate APY (annualized)
+    days_elapsed = (end_date - inception_date).days
+    years_elapsed = days_elapsed / 365.25
+    apy = ((current_nav / initial_nav) ** (1 / years_elapsed) - 1) * 100 if years_elapsed > 0 else 0
     
     total_cashflows = df_nav['Cashflow'].sum()
     total_accrual_change = df_nav['Accrual Change'].sum()
@@ -291,30 +296,42 @@ def render_nav_index(portfolio, repo_trades):
     max_nav = df_nav['NAV'].max()
     min_nav = df_nav['NAV'].min()
     
-    # Display metrics
+    # Display metrics with smaller text
+    st.markdown("""
+    <style>
+    [data-testid="stMetricValue"] {
+        font-size: 20px;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 14px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Current NAV", f"{current_nav:,.2f}", delta=f"{total_return:+.2f}%")
+    m1.metric("Current NAV", f"{current_nav:,.2f}", delta=f"{total_return_pct:+.2f}%")
     m2.metric("Initial NAV", f"{initial_nav:,.2f}")
     m3.metric("Max NAV", f"{max_nav:,.2f}")
     m4.metric("Min NAV", f"{min_nav:,.2f}")
     
     m5, m6, m7, m8 = st.columns(4)
-    m5.metric("Total Cashflows", f"{total_cashflows:,.2f}")
-    m6.metric("Total Accrual Δ", f"{total_accrual_change:,.2f}")
-    m7.metric("Total MTM Δ", f"{total_mtm_change:,.2f}")
-    m8.metric("Total Return", f"{total_return:+.2f}%")
+    m5.metric("Total Cashflows", f"R{total_cashflows/1e6:.1f}M")
+    m6.metric("Total Accrual Δ", f"R{total_accrual_change/1e6:.1f}M")
+    m7.metric("Total MTM Δ", f"R{total_mtm_change/1e6:.1f}M")
+    m8.metric("APY (Annualized)", f"{apy:+.2f}%")
     
-    # NAV chart
+    # NAV chart with dual y-axis
     st.markdown("###### NAV Index Evolution")
     
     fig = make_subplots(
         rows=2, cols=1,
-        subplot_titles=('NAV Index', 'Daily Changes'),
+        subplot_titles=('NAV Index (with MTM on right axis)', 'Daily Changes'),
         vertical_spacing=0.12,
-        row_heights=[0.65, 0.35]
+        row_heights=[0.65, 0.35],
+        specs=[[{"secondary_y": True}], [{"secondary_y": False}]]
     )
     
-    # Panel 1: NAV Index
+    # Panel 1: NAV Index (primary y-axis)
     fig.add_trace(
         go.Scatter(
             x=df_nav['Date'],
@@ -325,7 +342,22 @@ def render_nav_index(portfolio, repo_trades):
             fill='tozeroy',
             fillcolor='rgba(0, 212, 255, 0.2)'
         ),
-        row=1, col=1
+        row=1, col=1,
+        secondary_y=False
+    )
+    
+    # Panel 1: MTM (secondary y-axis)
+    fig.add_trace(
+        go.Scatter(
+            x=df_nav['Date'],
+            y=df_nav['MTM'],
+            name='MTM Δ',
+            mode='lines',
+            line=dict(color='#ff6b6b', width=2, dash='dot'),
+            opacity=0.7
+        ),
+        row=1, col=1,
+        secondary_y=True
     )
     
     # Add initial NAV reference line
@@ -371,7 +403,8 @@ def render_nav_index(portfolio, repo_trades):
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="NAV", row=1, col=1)
+    fig.update_yaxes(title_text="NAV Index", row=1, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="MTM (R)", row=1, col=1, secondary_y=True)
     fig.update_yaxes(title_text="Change", row=2, col=1)
     
     fig.update_layout(
