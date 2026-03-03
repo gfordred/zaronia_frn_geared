@@ -91,9 +91,10 @@ def calculate_geared_yields(portfolio, repo_trades, jibar_rate=8.0):
     # 5. Net income calculation (for reference)
     net_income = frn_income - repo_cost
     
-    # Return on equity (assuming equity = notional - repo)
-    equity = total_notional  # Simplified: assume equity = notional
-    roe = (net_income / equity * 100) if equity > 0 else 0
+    # Return on Equity = Net Yield (already calculated above)
+    # For a leveraged portfolio, ROE is the net yield on equity invested
+    # This equals: Gross Yield + Gearing Benefit
+    roe = net_yield
     
     return {
         'total_notional': total_notional,
