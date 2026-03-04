@@ -37,6 +37,8 @@ try:
         render_inception_cashflows,
         render_risk_evolution
     )
+    from settlement_account_proper import render_professional_settlement_account
+    from counterparty_risk_manager import render_counterparty_risk_manager
     from tab_descriptions import render_tab_description
     from portfolio_time_series import render_portfolio_time_series
     from funding_risk_analysis import render_funding_risk_analysis
@@ -2636,6 +2638,7 @@ try:
                 "📊 Current Valuation",
                 "💰 Yield Attribution", 
                 "📈 NAV Index",
+                "🏦 Counterparty Risk",
                 "📉 Time Series",
                 "🕰️ Time Travel",
                 "✏️ Edit Portfolio"
@@ -2644,6 +2647,17 @@ try:
             # TAB 1: Current Valuation
             with portfolio_tabs[0]:
                 st.markdown("##### Current Portfolio Valuation")
+                
+                st.info("""
+                **Portfolio Valuation Logic:**
+                
+                - **Clean Price:** Present value of all future cashflows (coupons + principal) discounted using JIBAR curve
+                - **DV01 (Dollar Value of 1bp):** Change in portfolio value for 1bp parallel shift in JIBAR curve
+                - **CS01 (Credit Spread 01):** Change in portfolio value for 1bp parallel shift in credit spreads
+                - **Gearing:** Ratio of repo debt to portfolio notional (leverage multiplier)
+                
+                FRNs are valued using QuantLib with South African market conventions (ACT/365, Modified Following, Quarterly resets).
+                """)
                 
                 df_summary, tot_clean, tot_dv01, tot_cs01, kr_tots = get_portfolio_summary(
                     portfolio_positions, jibar_curve, jibar_curve, settlement,
@@ -2666,6 +2680,24 @@ try:
             
             # TAB 2: Yield Attribution
             with portfolio_tabs[1]:
+                st.info("""
+                **Yield Attribution Framework:**
+                
+                This analysis shows how gearing amplifies returns through the spread pickup between FRN coupons and repo financing costs.
+                
+                **Key Concepts:**
+                - **Gross Yield:** FRN coupon income / Portfolio notional (JIBAR + avg FRN spread)
+                - **Repo Cost Rate:** Repo interest / Repo outstanding (JIBAR + repo spread)
+                - **Spread Pickup:** FRN spread - Repo spread (typically 100-120 bps for this portfolio)
+                - **Gearing Benefit:** Spread pickup × Gearing ratio
+                - **Net Yield:** Gross yield + Gearing benefit (return on equity)
+                
+                **Example:** With 9x gearing and 120 bps spread pickup:
+                - Base yield: 7.93% (JIBAR 6.63% + 130 bps FRN spread)
+                - Gearing benefit: 120 bps × 9 = 10.8%
+                - **Total return on equity: ~18.7%**
+                """)
+                
                 if MODULES_LOADED:
                     render_yield_attribution(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
                     st.markdown("---")
@@ -2675,6 +2707,28 @@ try:
             
             # TAB 3: NAV Index
             with portfolio_tabs[2]:
+                st.info("""
+                **NAV (Net Asset Value) Calculation:**
+                
+                NAV tracks the true economic value of the portfolio, accounting for all operating cashflows.
+                
+                **Formula:**
+                ```
+                NAV = Seed Capital + Cumulative Operating Cashflows
+                ```
+                
+                **Operating Cashflows (impact NAV):**
+                - ✅ FRN coupon income (received)
+                - ✅ Repo interest expense (paid)
+                
+                **Financing Cashflows (balance sheet only, NOT in NAV):**
+                - ❌ Repo principal borrowed/repaid (liability movements)
+                
+                **Why This Matters:**
+                Repo borrowing is NOT income - it's a liability. Only the interest spread affects P&L.
+                The NAV index shows true portfolio performance, similar to a hedge fund NAV.
+                """)
+                
                 if MODULES_LOADED:
                     render_nav_index(portfolio_positions, repo_trades)
                     
@@ -2685,20 +2739,51 @@ try:
                     render_inception_cashflows(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
                     
                     st.markdown("---")
+                    st.markdown("### 💰 Professional Settlement Account (Proper Accounting)")
+                    
+                    render_professional_settlement_account(
+                        portfolio_positions, 
+                        repo_trades, 
+                        seed_capital=100_000_000,  # R100M seed capital
+                        jibar_rate=rates.get('JIBAR3M', 6.63)
+                    )
+                    
+                    st.markdown("---")
                     
                     render_risk_evolution(portfolio_positions)
                 else:
                     st.info("💡 NAV index module not loaded. Install enhancement modules.")
             
-            # TAB 4: Time Series
+            # TAB 4: Counterparty Risk
             with portfolio_tabs[3]:
+                if MODULES_LOADED:
+                    render_counterparty_risk_manager(portfolio_positions, evaluation_date)
+                else:
+                    st.info("💡 Counterparty risk module not loaded. Install enhancement modules.")
+            
+            # TAB 5: Time Series
+            with portfolio_tabs[4]:
+                st.info("""
+                **Portfolio Time Series Analysis:**
+                
+                Track how the portfolio has evolved over time:
+                
+                - **Notional Evolution:** See portfolio growth from seed capital through gearing
+                - **Gearing History:** Monitor leverage ratio over time (target: ~9x)
+                - **Composition Changes:** Track counterparty exposure shifts
+                - **Risk Metrics:** DV01/CS01 evolution as portfolio matures
+                
+                **Key Insight:** A well-managed geared portfolio maintains stable gearing while rotating positions
+                to optimize spread pickup and manage concentration risk.
+                """)
+                
                 if MODULES_LOADED:
                     render_portfolio_time_series(portfolio_positions, repo_trades)
                 else:
                     st.info("💡 Portfolio time series module not loaded.")
             
-            # TAB 5: Time Travel
-            with portfolio_tabs[4]:
+            # TAB 6: Time Travel
+            with portfolio_tabs[5]:
                 st.markdown("##### 🕰️ Time Travel - Historical Portfolio Analysis")
                 
                 st.info("""
@@ -2816,8 +2901,8 @@ try:
                     # 3D portfolio surfaces
                     render_3d_portfolio_surfaces(portfolio_positions, repo_trades, df_historical, df_zaronia)
             
-            # TAB 6: Edit Portfolio
-            with portfolio_tabs[5]:
+            # TAB 7: Edit Portfolio
+            with portfolio_tabs[6]:
                 if MODULES_LOADED:
                     render_easy_portfolio_editor(portfolio_positions, save_portfolio)
                 else:
