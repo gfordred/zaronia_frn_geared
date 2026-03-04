@@ -2432,8 +2432,12 @@ try:
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
                 SEED_CAPITAL = 100_000_000  # R100M
                 
+                # Calculate settlement account cash (from repo borrowing - not yet deployed)
+                # Settlement cash = Repo borrowed - Portfolio purchased
+                settlement_cash = total_repo_cash - total_notional
+                
                 # Balance Sheet Equation: Assets = Liabilities + Equity
-                total_assets = tot_clean  # Market value of portfolio
+                total_assets = tot_clean + settlement_cash  # Market value of portfolio + cash
                 total_liabilities = total_repo_cash  # Repo outstanding
                 net_equity = total_assets - total_liabilities  # NAV
                 gearing = total_repo_cash / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
@@ -2443,8 +2447,10 @@ try:
                 
                 with col1:
                     st.markdown("**ASSETS**")
-                    st.metric("Portfolio MV", f"R{total_assets/1e6:.1f}M")
-                    mtm_loss = total_assets - total_notional
+                    st.metric("Total Assets", f"R{total_assets/1e6:.1f}M")
+                    st.caption(f"Portfolio MV: R{tot_clean/1e6:.1f}M")
+                    st.caption(f"Settlement Cash: R{settlement_cash/1e6:.1f}M")
+                    mtm_loss = tot_clean - total_notional
                     mtm_pct = (mtm_loss / total_notional * 100) if total_notional > 0 else 0
                     st.caption(f"Notional: R{total_notional/1e6:.0f}M")
                     st.caption(f"MTM P&L: R{mtm_loss/1e6:.1f}M ({mtm_pct:+.1f}%)", help="Mark-to-market gain/loss vs notional")
@@ -2478,10 +2484,16 @@ try:
                     equity_val = net_equity/1e6
                     seed_val = SEED_CAPITAL/1e6
                     
+                    settlement_cash_val = settlement_cash/1e6
+                    portfolio_mv_val = tot_clean/1e6
+                    
                     st.markdown(
                         "**Balance Sheet Equation:** `Assets = Liabilities + Equity`\n\n" +
                         f"**Assets (R{assets_val:.1f}M):**\n" +
-                        f"- Portfolio Market Value = R{assets_val:.1f}M (current worth)\n" +
+                        f"- Portfolio Market Value = R{portfolio_mv_val:.1f}M (bonds)\n" +
+                        f"- Settlement Cash = R{settlement_cash_val:.1f}M (uninvested)\n" +
+                        f"- **Total Assets = R{assets_val:.1f}M**\n\n" +
+                        f"**Portfolio Details:**\n" +
                         f"- Portfolio Notional = R{notional_val:.0f}M (face value)\n" +
                         f"- MTM P&L = R{mtm_val:.1f}M ({mtm_pct_val:+.1f}%)\n" +
                         "- Funded by: Seed Capital + Repo Borrowing\n\n" +
