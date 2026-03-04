@@ -798,611 +798,308 @@ def build_key_rate_curves(eval_date, r, day_count, key_tenors=None):
     return kr_curves
 
 
-# =============================================================================
-# SECTION 3: FRN PRICING ENGINE (Proper Projection/Discount Separation)
-# =============================================================================
-
-def get_lookup_dict(df, col_name):
-    """Create {date: value} dict for O(1) lookup."""
-    if df is None or col_name not in df.columns:
-        return {}
-    if not isinstance(df.index, pd.DatetimeIndex):
-        return {}
-    return {ts.date(): val for ts, val in zip(df.index, df[col_name]) if pd.notna(val)}
-
-
-def get_historical_rate(date_lookup, df, col_name='JIBAR3M'):
-    """Lookup historical rate with asof fallback."""
-    if df is None:
-        return None
-    ts_lookup = pd.Timestamp(date_lookup)
-    if isinstance(df.index, pd.DatetimeIndex):
-        if ts_lookup in df.index:
-            val = df.at[ts_lookup, col_name]
-            if pd.notna(val):
-                return val / 100.0
-        try:
-            prev_ts = df.index.asof(ts_lookup)
-            if pd.notna(prev_ts):
-                val = df.at[prev_ts, col_name]
-                if pd.notna(val):
-                    return val / 100.0
-        except Exception:
-            pass
-    return None
-
-
-def calculate_compounded_zaronia(start, end, lookback_days, calendar, day_count,
-                                  df_zaronia, curve, df_jibar=None,
-                                  zaronia_spread_bps=0.0,
-                                  zaronia_dict=None, jibar_dict=None):
-    """Calculate compounded daily ZARONIA with lookback."""
-    d = start
-    comp_factor = 1.0
-    spread_adj = zaronia_spread_bps / 10000.0
-    max_iter = 5000
-    n = 0
-
-    while d < end and n < max_iter:
-        n += 1
-        next_d = calendar.advance(d, 1, ql.Days)
-        if next_d > end:
-            next_d = end
-        dt = day_count.yearFraction(d, next_d)
-        obs_date = calendar.advance(d, -lookback_days, ql.Days)
-        rate = None
-
-        py_obs = date(obs_date.year(), obs_date.month(), obs_date.dayOfMonth())
-        if zaronia_dict:
-            v = zaronia_dict.get(py_obs)
-            if v is not None:
-                rate = v / 100.0
-        if rate is None and jibar_dict:
-            v = jibar_dict.get(py_obs)
-            if v is not None:
-                rate = v / 100.0 - spread_adj
-        if rate is None and df_zaronia is not None:
-            rate = get_historical_rate(pd.to_datetime(obs_date.ISO()), df_zaronia, 'ZARONIA')
-        if rate is None and df_jibar is not None:
-            j = get_historical_rate(pd.to_datetime(obs_date.ISO()), df_jibar, 'JIBAR3M')
-            if j is not None:
-                rate = j - spread_adj
-        if rate is None:
-            obs_next = calendar.advance(obs_date, 1, ql.Days)
-            rate = curve.forwardRate(obs_date, obs_next, day_count, ql.Simple).rate()
-
-        comp_factor *= (1.0 + rate * dt)
-        d = next_d
-
-    if n >= max_iter:
-        return curve.forwardRate(start, end, day_count, ql.Simple).rate()
-
-    total_dt = day_count.yearFraction(start, end)
-    if total_dt < 1e-10:
-        return 0.0
-    return (comp_factor - 1.0) / total_dt
-
-
-def price_frn(nominal, issue_spread_bps, dm_bps, start_date, end_date,
-              proj_curve, disc_base_curve, settlement_date,
-              day_count, calendar,
-              index_type='JIBAR 3M',
-              zaronia_spread_bps=0.0, lookback=0,
-              df_hist=None, df_zaronia=None,
-              zaronia_dict=None, jibar_dict=None,
-              return_df=True):
-    """
-    Price FRN with proper projection/discount curve separation.
-    Discount curve = ZeroSpreadedTermStructure(disc_base_curve, dm_bps).
-    """
-    start_ql = to_ql_date(start_date)
-    end_ql = to_ql_date(end_date)
-    sett_ql = to_ql_date(settlement_date)
-
-    schedule = ql.Schedule(start_ql, end_ql,
-                           ql.Period(3, ql.Months),
-                           calendar, ql.ModifiedFollowing, ql.ModifiedFollowing,
-                           ql.DateGeneration.Forward, False)
-    dates = list(schedule)
-
-    # Build discount curve with DM spread
-    dm_spread = ql.SimpleQuote(dm_bps / 10000.0)
-    disc_curve = ql.ZeroSpreadedTermStructure(
-        ql.YieldTermStructureHandle(disc_base_curve),
-        ql.QuoteHandle(dm_spread),
-        ql.Compounded, ql.Annual, day_count)
-    disc_curve.enableExtrapolation()
-
-    ref_date = proj_curve.referenceDate()
-    rows = []
-    total_pv = 0.0
-    accrued = 0.0
-
-    # Accrued interest
-    for i in range(1, len(dates)):
-        d_s, d_e = dates[i - 1], dates[i]
-        if d_s <= sett_ql < d_e:
-            fwd = _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
-                                   zaronia_spread_bps, lookback, calendar, day_count,
-                                   df_hist, df_zaronia, zaronia_dict, jibar_dict)
-            t_acc = day_count.yearFraction(d_s, sett_ql)
-            accrued = nominal * (fwd + issue_spread_bps / 10000.0) * t_acc
-            break
-
-    # Cashflow PV
-    for i in range(1, len(dates)):
-        d_s, d_e = dates[i - 1], dates[i]
-        if d_e <= sett_ql:
-            continue
-
-        fwd, rate_type = _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
-                                          zaronia_spread_bps, lookback, calendar, day_count,
-                                          df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                                          return_type=True)
-
-        t_period = day_count.yearFraction(d_s, d_e)
-        coupon_rate = fwd + issue_spread_bps / 10000.0
-        coupon_amt = nominal * coupon_rate * t_period
-
-        df_val = disc_curve.discount(d_e) / disc_curve.discount(sett_ql)
-
-        is_last = (i == len(dates) - 1)
-        principal = nominal if is_last else 0.0
-        total_pay = coupon_amt + principal
-        pv = df_val * total_pay
-        total_pv += pv
-
-        if return_df:
-            rows.append({
-                'Start Date': d_s.ISO(),
-                'End Date': d_e.ISO(),
-                'Days': day_count.dayCount(d_s, d_e),
-                'Rate Type': rate_type,
-                'Index Rate (%)': fwd * 100,
-                'Spread (bps)': issue_spread_bps,
-                'Total Rate (%)': coupon_rate * 100,
-                'Period (yrs)': t_period,
-                'Coupon': coupon_amt,
-                'Principal': principal,
-                'Total Payment': total_pay,
-                'Disc Factor': df_val,
-                'PV': pv,
-                'Type': 'Coupon+Principal' if is_last else 'Coupon',
-            })
-
-    clean = total_pv - accrued
-    df_out = pd.DataFrame(rows) if return_df else None
-    return total_pv, accrued, clean, df_out
-
-
-def _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
-                     zaronia_spread_bps, lookback, calendar, day_count,
-                     df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                     return_type=False):
-    """Get forward coupon index rate for a period."""
-    if index_type == 'ZARONIA':
-        fwd = calculate_compounded_zaronia(d_s, d_e, lookback, calendar, day_count,
-                                           df_zaronia, proj_curve, df_jibar=df_hist,
-                                           zaronia_spread_bps=zaronia_spread_bps,
-                                           zaronia_dict=zaronia_dict, jibar_dict=jibar_dict)
-        rtype = f'Comp. ZARONIA (lb={lookback}d)'
-    elif d_s < ref_date:
-        fwd = None
-        py_ds = date(d_s.year(), d_s.month(), d_s.dayOfMonth())
-        if jibar_dict:
-            v = jibar_dict.get(py_ds)
-            if v is not None:
-                fwd = v / 100.0
-        if fwd is None and df_hist is not None:
-            fwd = get_historical_rate(pd.to_datetime(d_s.ISO()), df_hist, 'JIBAR3M')
-        if fwd is None:
-            fwd = proj_curve.forwardRate(ref_date, ref_date + (d_e - d_s), day_count, ql.Simple).rate()
-        rtype = 'Historical JIBAR'
-    else:
-        fwd = proj_curve.forwardRate(d_s, d_e, day_count, ql.Simple).rate()
-        rtype = 'Forward JIBAR'
-
-    return (fwd, rtype) if return_type else fwd
-
-
-def calculate_dv01_cs01(nominal, issue_spread, dm, start, end,
-                         proj_curve, disc_base_curve, settlement,
-                         day_count, calendar, index_type,
-                         zaronia_spread_bps, lookback,
-                         df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                         eval_date, rates_dict):
-    """Calculate DV01 and CS01/DM01."""
-    _, _, base_clean, _ = price_frn(
-        nominal, issue_spread, dm, start, end,
-        proj_curve, disc_base_curve, settlement,
-        day_count, calendar, index_type,
-        zaronia_spread_bps, lookback, df_hist, df_zaronia,
-        zaronia_dict, jibar_dict, return_df=False)
-
-    # DV01
-    shifted_jibar, _, _ = build_jibar_curve(eval_date, rates_dict, shift_bps=1.0)
-    shifted_proj = (build_zaronia_curve_daily(shifted_jibar, zaronia_spread_bps, settlement, day_count)
-                    if index_type == 'ZARONIA' else shifted_jibar)
-    _, _, shifted_clean, _ = price_frn(
-        nominal, issue_spread, dm, start, end,
-        shifted_proj, shifted_jibar, settlement,
-        day_count, calendar, index_type,
-        zaronia_spread_bps, lookback, df_hist, df_zaronia,
-        zaronia_dict, jibar_dict, return_df=False)
-    dv01 = (base_clean - shifted_clean) * 10.0
-
-    # CS01/DM01
-    _, _, dm_clean, _ = price_frn(
-        nominal, issue_spread, dm + 1.0, start, end,
-        proj_curve, disc_base_curve, settlement,
-        day_count, calendar, index_type,
-        zaronia_spread_bps, lookback, df_hist, df_zaronia,
-        zaronia_dict, jibar_dict, return_df=False)
-    cs01 = (base_clean - dm_clean) * 10.0
-
-    return dv01, cs01
-
-
-def calculate_key_rate_dv01(nominal, issue_spread, dm, start, end,
-                              disc_base_curve, settlement,
-                              day_count, calendar, index_type,
-                              zaronia_spread_bps, lookback,
-                              df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                              eval_date, rates_dict, base_clean):
-    """Calculate key-rate DV01 for standard tenors."""
-    tenors = ['3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y']
-    kr_curves = build_key_rate_curves(eval_date, rates_dict, day_count, tenors)
-    results = {}
-    for tenor, kr_proj in kr_curves.items():
-        try:
-            proj = (build_zaronia_curve_daily(kr_proj, zaronia_spread_bps, settlement, day_count)
-                    if index_type == 'ZARONIA' else kr_proj)
-            _, _, kr_clean, _ = price_frn(
-                nominal, issue_spread, dm, start, end,
-                proj, kr_proj, settlement,
-                day_count, calendar, index_type,
-                zaronia_spread_bps, lookback, df_hist, df_zaronia,
-                zaronia_dict, jibar_dict, return_df=False)
-            results[tenor] = (base_clean - kr_clean) * 10.0
-        except Exception:
-            results[tenor] = 0.0
-    return results
-
-
-def solve_dm(target_all_in, nominal, issue_spread, start, end,
-             proj_curve, disc_base_curve, settlement,
-             day_count, calendar, index_type,
-             zaronia_spread_bps, lookback,
-             df_hist, df_zaronia, zaronia_dict, jibar_dict,
-             initial_guess=None):
-    """Solve for DM given target all-in price."""
-    x0 = initial_guess if initial_guess is not None else issue_spread
-    x1 = x0 + 10.0
-
-    for _ in range(12):
-        p0, _, _, _ = price_frn(nominal, issue_spread, x0, start, end,
-                                 proj_curve, disc_base_curve, settlement,
-                                 day_count, calendar, index_type,
-                                 zaronia_spread_bps, lookback, df_hist, df_zaronia,
-                                 zaronia_dict, jibar_dict, return_df=False)
-        p1, _, _, _ = price_frn(nominal, issue_spread, x1, start, end,
-                                 proj_curve, disc_base_curve, settlement,
-                                 day_count, calendar, index_type,
-                                 zaronia_spread_bps, lookback, df_hist, df_zaronia,
-                                 zaronia_dict, jibar_dict, return_df=False)
-        y0 = p0 - target_all_in
-        y1 = p1 - target_all_in
-        if abs(y1) < 1e-4:
-            return x1
-        if abs(y1 - y0) < 1e-10:
-            break
-        x_new = x1 - y1 * (x1 - x0) / (y1 - y0)
-        x0, x1 = x1, x_new
-
-    return x1
-
-# =============================================================================
-# SECTION 3: FRN PRICING ENGINE (Proper Projection/Discount Separation)
-# =============================================================================
-
-def get_lookup_dict(df, col_name):
-    """Create {date: value} dict for O(1) lookup."""
-    if df is None or col_name not in df.columns:
-        return {}
-    if not isinstance(df.index, pd.DatetimeIndex):
-        return {}
-    return {ts.date(): val for ts, val in zip(df.index, df[col_name]) if pd.notna(val)}
-
-
-def get_historical_rate(date_lookup, df, col_name='JIBAR3M'):
-    """Lookup historical rate with asof fallback."""
-    if df is None:
-        return None
-    ts_lookup = pd.Timestamp(date_lookup)
-    if isinstance(df.index, pd.DatetimeIndex):
-        if ts_lookup in df.index:
-            val = df.at[ts_lookup, col_name]
-            if pd.notna(val):
-                return val / 100.0
-        try:
-            prev_ts = df.index.asof(ts_lookup)
-            if pd.notna(prev_ts):
-                val = df.at[prev_ts, col_name]
-                if pd.notna(val):
-                    return val / 100.0
-        except Exception:
-            pass
-    return None
-
-
-def calculate_compounded_zaronia(start, end, lookback_days, calendar, day_count,
-                                  df_zaronia, curve, df_jibar=None,
-                                  zaronia_spread_bps=0.0,
-                                  zaronia_dict=None, jibar_dict=None):
-    """Calculate compounded daily ZARONIA with lookback."""
-    d = start
-    comp_factor = 1.0
-    spread_adj = zaronia_spread_bps / 10000.0
-    max_iter = 5000
-    n = 0
-
-    while d < end and n < max_iter:
-        n += 1
-        next_d = calendar.advance(d, 1, ql.Days)
-        if next_d > end:
-            next_d = end
-        dt = day_count.yearFraction(d, next_d)
-        obs_date = calendar.advance(d, -lookback_days, ql.Days)
-        rate = None
-
-        py_obs = date(obs_date.year(), obs_date.month(), obs_date.dayOfMonth())
-        if zaronia_dict:
-            v = zaronia_dict.get(py_obs)
-            if v is not None:
-                rate = v / 100.0
-        if rate is None and jibar_dict:
-            v = jibar_dict.get(py_obs)
-            if v is not None:
-                rate = v / 100.0 - spread_adj
-        if rate is None and df_zaronia is not None:
-            rate = get_historical_rate(pd.to_datetime(obs_date.ISO()), df_zaronia, 'ZARONIA')
-        if rate is None and df_jibar is not None:
-            j = get_historical_rate(pd.to_datetime(obs_date.ISO()), df_jibar, 'JIBAR3M')
-            if j is not None:
-                rate = j - spread_adj
-        if rate is None:
-            obs_next = calendar.advance(obs_date, 1, ql.Days)
-            rate = curve.forwardRate(obs_date, obs_next, day_count, ql.Simple).rate()
-
-        comp_factor *= (1.0 + rate * dt)
-        d = next_d
-
-    if n >= max_iter:
-        return curve.forwardRate(start, end, day_count, ql.Simple).rate()
-
-    total_dt = day_count.yearFraction(start, end)
-    if total_dt < 1e-10:
-        return 0.0
-    return (comp_factor - 1.0) / total_dt
-
-
-def price_frn(nominal, issue_spread_bps, dm_bps, start_date, end_date,
-              proj_curve, disc_base_curve, settlement_date,
-              day_count, calendar,
-              index_type='JIBAR 3M',
-              zaronia_spread_bps=0.0, lookback=0,
-              df_hist=None, df_zaronia=None,
-              zaronia_dict=None, jibar_dict=None,
-              return_df=True):
-    """
-    Price FRN with proper projection/discount curve separation.
-    Discount curve = ZeroSpreadedTermStructure(disc_base_curve, dm_bps).
-    """
-    start_ql = to_ql_date(start_date)
-    end_ql = to_ql_date(end_date)
-    sett_ql = to_ql_date(settlement_date)
-
-    schedule = ql.Schedule(start_ql, end_ql,
-                           ql.Period(3, ql.Months),
-                           calendar, ql.ModifiedFollowing, ql.ModifiedFollowing,
-                           ql.DateGeneration.Forward, False)
-    dates = list(schedule)
-
-    # Build discount curve with DM spread
-    dm_spread = ql.SimpleQuote(dm_bps / 10000.0)
-    disc_curve = ql.ZeroSpreadedTermStructure(
-        ql.YieldTermStructureHandle(disc_base_curve),
-        ql.QuoteHandle(dm_spread),
-        ql.Compounded, ql.Annual, day_count)
-    disc_curve.enableExtrapolation()
-
-    ref_date = proj_curve.referenceDate()
-    rows = []
-    total_pv = 0.0
-    accrued = 0.0
-
-    # Accrued interest
-    for i in range(1, len(dates)):
-        d_s, d_e = dates[i - 1], dates[i]
-        if d_s <= sett_ql < d_e:
-            fwd = _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
-                                   zaronia_spread_bps, lookback, calendar, day_count,
-                                   df_hist, df_zaronia, zaronia_dict, jibar_dict)
-            t_acc = day_count.yearFraction(d_s, sett_ql)
-            accrued = nominal * (fwd + issue_spread_bps / 10000.0) * t_acc
-            break
-
-    # Cashflow PV
-    for i in range(1, len(dates)):
-        d_s, d_e = dates[i - 1], dates[i]
-        if d_e <= sett_ql:
-            continue
-
-        fwd, rate_type = _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
-                                          zaronia_spread_bps, lookback, calendar, day_count,
-                                          df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                                          return_type=True)
-
-        t_period = day_count.yearFraction(d_s, d_e)
-        coupon_rate = fwd + issue_spread_bps / 10000.0
-        coupon_amt = nominal * coupon_rate * t_period
-
-        df_val = disc_curve.discount(d_e) / disc_curve.discount(sett_ql)
-
-        is_last = (i == len(dates) - 1)
-        principal = nominal if is_last else 0.0
-        total_pay = coupon_amt + principal
-        pv = df_val * total_pay
-        total_pv += pv
-
-        if return_df:
-            rows.append({
-                'Start Date': d_s.ISO(),
-                'End Date': d_e.ISO(),
-                'Days': day_count.dayCount(d_s, d_e),
-                'Rate Type': rate_type,
-                'Index Rate (%)': fwd * 100,
-                'Spread (bps)': issue_spread_bps,
-                'Total Rate (%)': coupon_rate * 100,
-                'Period (yrs)': t_period,
-                'Coupon': coupon_amt,
-                'Principal': principal,
-                'Total Payment': total_pay,
-                'Disc Factor': df_val,
-                'PV': pv,
-                'Type': 'Coupon+Principal' if is_last else 'Coupon',
-            })
-
-    clean = total_pv - accrued
-    df_out = pd.DataFrame(rows) if return_df else None
-    return total_pv, accrued, clean, df_out
-
-
-def _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
-                     zaronia_spread_bps, lookback, calendar, day_count,
-                     df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                     return_type=False):
-    """Get forward coupon index rate for a period."""
-    if index_type == 'ZARONIA':
-        fwd = calculate_compounded_zaronia(d_s, d_e, lookback, calendar, day_count,
-                                           df_zaronia, proj_curve, df_jibar=df_hist,
-                                           zaronia_spread_bps=zaronia_spread_bps,
-                                           zaronia_dict=zaronia_dict, jibar_dict=jibar_dict)
-        rtype = f'Comp. ZARONIA (lb={lookback}d)'
-    elif d_s < ref_date:
-        fwd = None
-        py_ds = date(d_s.year(), d_s.month(), d_s.dayOfMonth())
-        if jibar_dict:
-            v = jibar_dict.get(py_ds)
-            if v is not None:
-                fwd = v / 100.0
-        if fwd is None and df_hist is not None:
-            fwd = get_historical_rate(pd.to_datetime(d_s.ISO()), df_hist, 'JIBAR3M')
-        if fwd is None:
-            fwd = proj_curve.forwardRate(ref_date, ref_date + (d_e - d_s), day_count, ql.Simple).rate()
-        rtype = 'Historical JIBAR'
-    else:
-        fwd = proj_curve.forwardRate(d_s, d_e, day_count, ql.Simple).rate()
-        rtype = 'Forward JIBAR'
-
-    return (fwd, rtype) if return_type else fwd
-
-
-def calculate_dv01_cs01(nominal, issue_spread, dm, start, end,
-                         proj_curve, disc_base_curve, settlement,
-                         day_count, calendar, index_type,
-                         zaronia_spread_bps, lookback,
-                         df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                         eval_date, rates_dict):
-    """Calculate DV01 and CS01/DM01."""
-    _, _, base_clean, _ = price_frn(
-        nominal, issue_spread, dm, start, end,
-        proj_curve, disc_base_curve, settlement,
-        day_count, calendar, index_type,
-        zaronia_spread_bps, lookback, df_hist, df_zaronia,
-        zaronia_dict, jibar_dict, return_df=False)
-
-    # DV01
-    shifted_jibar, _, _ = build_jibar_curve(eval_date, rates_dict, shift_bps=1.0)
-    shifted_proj = (build_zaronia_curve_daily(shifted_jibar, zaronia_spread_bps, settlement, day_count)
-                    if index_type == 'ZARONIA' else shifted_jibar)
-    _, _, shifted_clean, _ = price_frn(
-        nominal, issue_spread, dm, start, end,
-        shifted_proj, shifted_jibar, settlement,
-        day_count, calendar, index_type,
-        zaronia_spread_bps, lookback, df_hist, df_zaronia,
-        zaronia_dict, jibar_dict, return_df=False)
-    dv01 = (base_clean - shifted_clean) * 10.0
-
-    # CS01/DM01
-    _, _, dm_clean, _ = price_frn(
-        nominal, issue_spread, dm + 1.0, start, end,
-        proj_curve, disc_base_curve, settlement,
-        day_count, calendar, index_type,
-        zaronia_spread_bps, lookback, df_hist, df_zaronia,
-        zaronia_dict, jibar_dict, return_df=False)
-    cs01 = (base_clean - dm_clean) * 10.0
-
-    return dv01, cs01
-
-
-def calculate_key_rate_dv01(nominal, issue_spread, dm, start, end,
-                              disc_base_curve, settlement,
-                              day_count, calendar, index_type,
-                              zaronia_spread_bps, lookback,
-                              df_hist, df_zaronia, zaronia_dict, jibar_dict,
-                              eval_date, rates_dict, base_clean):
-    """Calculate key-rate DV01 for standard tenors."""
-    tenors = ['3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y']
-    kr_curves = build_key_rate_curves(eval_date, rates_dict, day_count, tenors)
-    results = {}
-    for tenor, kr_proj in kr_curves.items():
-        try:
-            proj = (build_zaronia_curve_daily(kr_proj, zaronia_spread_bps, settlement, day_count)
-                    if index_type == 'ZARONIA' else kr_proj)
-            _, _, kr_clean, _ = price_frn(
-                nominal, issue_spread, dm, start, end,
-                proj, kr_proj, settlement,
-                day_count, calendar, index_type,
-                zaronia_spread_bps, lookback, df_hist, df_zaronia,
-                zaronia_dict, jibar_dict, return_df=False)
-            results[tenor] = (base_clean - kr_clean) * 10.0
-        except Exception:
-            results[tenor] = 0.0
-    return results
-
-
-def solve_dm(target_all_in, nominal, issue_spread, start, end,
-             proj_curve, disc_base_curve, settlement,
-             day_count, calendar, index_type,
-             zaronia_spread_bps, lookback,
-             df_hist, df_zaronia, zaronia_dict, jibar_dict,
-             initial_guess=None):
-    """Solve for DM given target all-in price."""
-    x0 = initial_guess if initial_guess is not None else issue_spread
-    x1 = x0 + 10.0
-
-    for _ in range(12):
-        p0, _, _, _ = price_frn(nominal, issue_spread, x0, start, end,
-                                 proj_curve, disc_base_curve, settlement,
-                                 day_count, calendar, index_type,
-                                 zaronia_spread_bps, lookback, df_hist, df_zaronia,
-                                 zaronia_dict, jibar_dict, return_df=False)
-        p1, _, _, _ = price_frn(nominal, issue_spread, x1, start, end,
-                                 proj_curve, disc_base_curve, settlement,
-                                 day_count, calendar, index_type,
-                                 zaronia_spread_bps, lookback, df_hist, df_zaronia,
-                                 zaronia_dict, jibar_dict, return_df=False)
-        y0 = p0 - target_all_in
-        y1 = p1 - target_all_in
-        if abs(y1) < 1e-4:
-            return x1
-        if abs(y1 - y0) < 1e-10:
-            break
-        x_new = x1 - y1 * (x1 - x0) / (y1 - y0)
-        x0, x1 = x1, x_new
-
-    return x1
+# # =============================================================================
+# # SECTION 3: FRN PRICING ENGINE (Proper Projection/Discount Separation)
+# # =============================================================================
+
+# def get_lookup_dict(df, col_name):
+#     """Create {date: value} dict for O(1) lookup."""
+#     if df is None or col_name not in df.columns:
+#         return {}
+#     if not isinstance(df.index, pd.DatetimeIndex):
+#         return {}
+#     return {ts.date(): val for ts, val in zip(df.index, df[col_name]) if pd.notna(val)}
+
+
+# def get_historical_rate(date_lookup, df, col_name='JIBAR3M'):
+#     """Lookup historical rate with asof fallback."""
+#     if df is None:
+#         return None
+#     ts_lookup = pd.Timestamp(date_lookup)
+#     if isinstance(df.index, pd.DatetimeIndex):
+#         if ts_lookup in df.index:
+#             val = df.at[ts_lookup, col_name]
+#             if pd.notna(val):
+#                 return val / 100.0
+#         try:
+#             prev_ts = df.index.asof(ts_lookup)
+#             if pd.notna(prev_ts):
+#                 val = df.at[prev_ts, col_name]
+#                 if pd.notna(val):
+#                     return val / 100.0
+#         except Exception:
+#             pass
+#     return None
+
+
+# def calculate_compounded_zaronia(start, end, lookback_days, calendar, day_count,
+#                                   df_zaronia, curve, df_jibar=None,
+#                                   zaronia_spread_bps=0.0,
+#                                   zaronia_dict=None, jibar_dict=None):
+#     """Calculate compounded daily ZARONIA with lookback."""
+#     d = start
+#     comp_factor = 1.0
+#     spread_adj = zaronia_spread_bps / 10000.0
+#     max_iter = 5000
+#     n = 0
+
+#     while d < end and n < max_iter:
+#         n += 1
+#         next_d = calendar.advance(d, 1, ql.Days)
+#         if next_d > end:
+#             next_d = end
+#         dt = day_count.yearFraction(d, next_d)
+#         obs_date = calendar.advance(d, -lookback_days, ql.Days)
+#         rate = None
+
+#         py_obs = date(obs_date.year(), obs_date.month(), obs_date.dayOfMonth())
+#         if zaronia_dict:
+#             v = zaronia_dict.get(py_obs)
+#             if v is not None:
+#                 rate = v / 100.0
+#         if rate is None and jibar_dict:
+#             v = jibar_dict.get(py_obs)
+#             if v is not None:
+#                 rate = v / 100.0 - spread_adj
+#         if rate is None and df_zaronia is not None:
+#             rate = get_historical_rate(pd.to_datetime(obs_date.ISO()), df_zaronia, 'ZARONIA')
+#         if rate is None and df_jibar is not None:
+#             j = get_historical_rate(pd.to_datetime(obs_date.ISO()), df_jibar, 'JIBAR3M')
+#             if j is not None:
+#                 rate = j - spread_adj
+#         if rate is None:
+#             obs_next = calendar.advance(obs_date, 1, ql.Days)
+#             rate = curve.forwardRate(obs_date, obs_next, day_count, ql.Simple).rate()
+
+#         comp_factor *= (1.0 + rate * dt)
+#         d = next_d
+
+#     if n >= max_iter:
+#         return curve.forwardRate(start, end, day_count, ql.Simple).rate()
+
+#     total_dt = day_count.yearFraction(start, end)
+#     if total_dt < 1e-10:
+#         return 0.0
+#     return (comp_factor - 1.0) / total_dt
+
+
+# def price_frn(nominal, issue_spread_bps, dm_bps, start_date, end_date,
+#               proj_curve, disc_base_curve, settlement_date,
+#               day_count, calendar,
+#               index_type='JIBAR 3M',
+#               zaronia_spread_bps=0.0, lookback=0,
+#               df_hist=None, df_zaronia=None,
+#               zaronia_dict=None, jibar_dict=None,
+#               return_df=True):
+#     """
+#     Price FRN with proper projection/discount curve separation.
+#     Discount curve = ZeroSpreadedTermStructure(disc_base_curve, dm_bps).
+#     """
+#     start_ql = to_ql_date(start_date)
+#     end_ql = to_ql_date(end_date)
+#     sett_ql = to_ql_date(settlement_date)
+
+#     schedule = ql.Schedule(start_ql, end_ql,
+#                            ql.Period(3, ql.Months),
+#                            calendar, ql.ModifiedFollowing, ql.ModifiedFollowing,
+#                            ql.DateGeneration.Forward, False)
+#     dates = list(schedule)
+
+#     # Build discount curve with DM spread
+#     dm_spread = ql.SimpleQuote(dm_bps / 10000.0)
+#     disc_curve = ql.ZeroSpreadedTermStructure(
+#         ql.YieldTermStructureHandle(disc_base_curve),
+#         ql.QuoteHandle(dm_spread),
+#         ql.Compounded, ql.Annual, day_count)
+#     disc_curve.enableExtrapolation()
+
+#     ref_date = proj_curve.referenceDate()
+#     rows = []
+#     total_pv = 0.0
+#     accrued = 0.0
+
+#     # Accrued interest
+#     for i in range(1, len(dates)):
+#         d_s, d_e = dates[i - 1], dates[i]
+#         if d_s <= sett_ql < d_e:
+#             fwd = _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
+#                                    zaronia_spread_bps, lookback, calendar, day_count,
+#                                    df_hist, df_zaronia, zaronia_dict, jibar_dict)
+#             t_acc = day_count.yearFraction(d_s, sett_ql)
+#             accrued = nominal * (fwd + issue_spread_bps / 10000.0) * t_acc
+#             break
+
+#     # Cashflow PV
+#     for i in range(1, len(dates)):
+#         d_s, d_e = dates[i - 1], dates[i]
+#         if d_e <= sett_ql:
+#             continue
+
+#         fwd, rate_type = _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
+#                                           zaronia_spread_bps, lookback, calendar, day_count,
+#                                           df_hist, df_zaronia, zaronia_dict, jibar_dict,
+#                                           return_type=True)
+
+#         t_period = day_count.yearFraction(d_s, d_e)
+#         coupon_rate = fwd + issue_spread_bps / 10000.0
+#         coupon_amt = nominal * coupon_rate * t_period
+
+#         df_val = disc_curve.discount(d_e) / disc_curve.discount(sett_ql)
+
+#         is_last = (i == len(dates) - 1)
+#         principal = nominal if is_last else 0.0
+#         total_pay = coupon_amt + principal
+#         pv = df_val * total_pay
+#         total_pv += pv
+
+#         if return_df:
+#             rows.append({
+#                 'Start Date': d_s.ISO(),
+#                 'End Date': d_e.ISO(),
+#                 'Days': day_count.dayCount(d_s, d_e),
+#                 'Rate Type': rate_type,
+#                 'Index Rate (%)': fwd * 100,
+#                 'Spread (bps)': issue_spread_bps,
+#                 'Total Rate (%)': coupon_rate * 100,
+#                 'Period (yrs)': t_period,
+#                 'Coupon': coupon_amt,
+#                 'Principal': principal,
+#                 'Total Payment': total_pay,
+#                 'Disc Factor': df_val,
+#                 'PV': pv,
+#                 'Type': 'Coupon+Principal' if is_last else 'Coupon',
+#             })
+
+#     clean = total_pv - accrued
+#     df_out = pd.DataFrame(rows) if return_df else None
+#     return total_pv, accrued, clean, df_out
+
+
+# def _get_coupon_rate(d_s, d_e, proj_curve, ref_date, index_type,
+#                      zaronia_spread_bps, lookback, calendar, day_count,
+#                      df_hist, df_zaronia, zaronia_dict, jibar_dict,
+#                      return_type=False):
+#     """Get forward coupon index rate for a period."""
+#     if index_type == 'ZARONIA':
+#         fwd = calculate_compounded_zaronia(d_s, d_e, lookback, calendar, day_count,
+#                                            df_zaronia, proj_curve, df_jibar=df_hist,
+#                                            zaronia_spread_bps=zaronia_spread_bps,
+#                                            zaronia_dict=zaronia_dict, jibar_dict=jibar_dict)
+#         rtype = f'Comp. ZARONIA (lb={lookback}d)'
+#     elif d_s < ref_date:
+#         fwd = None
+#         py_ds = date(d_s.year(), d_s.month(), d_s.dayOfMonth())
+#         if jibar_dict:
+#             v = jibar_dict.get(py_ds)
+#             if v is not None:
+#                 fwd = v / 100.0
+#         if fwd is None and df_hist is not None:
+#             fwd = get_historical_rate(pd.to_datetime(d_s.ISO()), df_hist, 'JIBAR3M')
+#         if fwd is None:
+#             fwd = proj_curve.forwardRate(ref_date, ref_date + (d_e - d_s), day_count, ql.Simple).rate()
+#         rtype = 'Historical JIBAR'
+#     else:
+#         fwd = proj_curve.forwardRate(d_s, d_e, day_count, ql.Simple).rate()
+#         rtype = 'Forward JIBAR'
+
+#     return (fwd, rtype) if return_type else fwd
+
+
+# def calculate_dv01_cs01(nominal, issue_spread, dm, start, end,
+#                          proj_curve, disc_base_curve, settlement,
+#                          day_count, calendar, index_type,
+#                          zaronia_spread_bps, lookback,
+#                          df_hist, df_zaronia, zaronia_dict, jibar_dict,
+#                          eval_date, rates_dict):
+#     """Calculate DV01 and CS01/DM01."""
+#     _, _, base_clean, _ = price_frn(
+#         nominal, issue_spread, dm, start, end,
+#         proj_curve, disc_base_curve, settlement,
+#         day_count, calendar, index_type,
+#         zaronia_spread_bps, lookback, df_hist, df_zaronia,
+#         zaronia_dict, jibar_dict, return_df=False)
+
+#     # DV01
+#     shifted_jibar, _, _ = build_jibar_curve(eval_date, rates_dict, shift_bps=1.0)
+#     shifted_proj = (build_zaronia_curve_daily(shifted_jibar, zaronia_spread_bps, settlement, day_count)
+#                     if index_type == 'ZARONIA' else shifted_jibar)
+#     _, _, shifted_clean, _ = price_frn(
+#         nominal, issue_spread, dm, start, end,
+#         shifted_proj, shifted_jibar, settlement,
+#         day_count, calendar, index_type,
+#         zaronia_spread_bps, lookback, df_hist, df_zaronia,
+#         zaronia_dict, jibar_dict, return_df=False)
+#     dv01 = (base_clean - shifted_clean) * 10.0
+
+#     # CS01/DM01
+#     _, _, dm_clean, _ = price_frn(
+#         nominal, issue_spread, dm + 1.0, start, end,
+#         proj_curve, disc_base_curve, settlement,
+#         day_count, calendar, index_type,
+#         zaronia_spread_bps, lookback, df_hist, df_zaronia,
+#         zaronia_dict, jibar_dict, return_df=False)
+#     cs01 = (base_clean - dm_clean) * 10.0
+
+#     return dv01, cs01
+
+
+# def calculate_key_rate_dv01(nominal, issue_spread, dm, start, end,
+#                               disc_base_curve, settlement,
+#                               day_count, calendar, index_type,
+#                               zaronia_spread_bps, lookback,
+#                               df_hist, df_zaronia, zaronia_dict, jibar_dict,
+#                               eval_date, rates_dict, base_clean):
+#     """Calculate key-rate DV01 for standard tenors."""
+#     tenors = ['3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y']
+#     kr_curves = build_key_rate_curves(eval_date, rates_dict, day_count, tenors)
+#     results = {}
+#     for tenor, kr_proj in kr_curves.items():
+#         try:
+#             proj = (build_zaronia_curve_daily(kr_proj, zaronia_spread_bps, settlement, day_count)
+#                     if index_type == 'ZARONIA' else kr_proj)
+#             _, _, kr_clean, _ = price_frn(
+#                 nominal, issue_spread, dm, start, end,
+#                 proj, kr_proj, settlement,
+#                 day_count, calendar, index_type,
+#                 zaronia_spread_bps, lookback, df_hist, df_zaronia,
+#                 zaronia_dict, jibar_dict, return_df=False)
+#             results[tenor] = (base_clean - kr_clean) * 10.0
+#         except Exception:
+#             results[tenor] = 0.0
+#     return results
+
+
+# def solve_dm(target_all_in, nominal, issue_spread, start, end,
+#              proj_curve, disc_base_curve, settlement,
+#              day_count, calendar, index_type,
+#              zaronia_spread_bps, lookback,
+#              df_hist, df_zaronia, zaronia_dict, jibar_dict,
+#              initial_guess=None):
+#     """Solve for DM given target all-in price."""
+#     x0 = initial_guess if initial_guess is not None else issue_spread
+#     x1 = x0 + 10.0
+
+#     for _ in range(12):
+#         p0, _, _, _ = price_frn(nominal, issue_spread, x0, start, end,
+#                                  proj_curve, disc_base_curve, settlement,
+#                                  day_count, calendar, index_type,
+#                                  zaronia_spread_bps, lookback, df_hist, df_zaronia,
+#                                  zaronia_dict, jibar_dict, return_df=False)
+#         p1, _, _, _ = price_frn(nominal, issue_spread, x1, start, end,
+#                                  proj_curve, disc_base_curve, settlement,
+#                                  day_count, calendar, index_type,
+#                                  zaronia_spread_bps, lookback, df_hist, df_zaronia,
+#                                  zaronia_dict, jibar_dict, return_df=False)
+#         y0 = p0 - target_all_in
+#         y1 = p1 - target_all_in
+#         if abs(y1) < 1e-4:
+#             return x1
+#         if abs(y1 - y0) < 1e-10:
+#             break
+#         x_new = x1 - y1 * (x1 - x0) / (y1 - y0)
+#         x0, x1 = x1, x_new
+
+#     return x1
 
 
 # =============================================================================
