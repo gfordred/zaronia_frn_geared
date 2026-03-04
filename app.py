@@ -2455,7 +2455,10 @@ try:
                 with col1:
                     st.markdown("**ASSETS**")
                     st.metric("Portfolio MV", f"R{total_assets/1e6:.1f}M")
+                    mtm_loss = total_assets - total_notional
+                    mtm_pct = (mtm_loss / total_notional * 100) if total_notional > 0 else 0
                     st.caption(f"Notional: R{total_notional/1e6:.0f}M")
+                    st.caption(f"MTM P&L: R{mtm_loss/1e6:.1f}M ({mtm_pct:+.1f}%)", help="Mark-to-market gain/loss vs notional")
                 
                 with col2:
                     st.markdown("**LIABILITIES**")
@@ -2481,9 +2484,15 @@ try:
                     **Balance Sheet Equation:** `Assets = Liabilities + Equity`
                     
                     **Assets (R{total_assets/1e6:.1f}M):**
-                    - Portfolio Market Value = R{total_assets/1e6:.1f}M
-                    - Portfolio Notional = R{total_notional/1e6:.0f}M
+                    - Portfolio Market Value = R{total_assets/1e6:.1f}M (current worth)
+                    - Portfolio Notional = R{total_notional/1e6:.0f}M (face value)
+                    - **MTM P&L = R{(total_assets - total_notional)/1e6:.1f}M ({((total_assets - total_notional)/total_notional*100):+.1f}%)**
                     - Funded by: Seed Capital + Repo Borrowing
+                    
+                    ⚠️ **Important:** MV ≠ Notional
+                    - MV is what the bonds are worth TODAY (mark-to-market)
+                    - Notional is the original face value
+                    - Difference = Unrealized gain/loss from price changes
                     
                     **Liabilities (R{total_liabilities/1e6:.1f}M):**
                     - Repo Outstanding = R{total_liabilities/1e6:.1f}M
