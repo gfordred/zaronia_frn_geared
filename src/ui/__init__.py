@@ -22,6 +22,10 @@ from .balance_sheet_summary import (
     render_balance_sheet_summary,
     render_asset_liability_breakdown
 )
+from .valuation_date_banner import (
+    render_valuation_date_banner,
+    render_compact_valuation_date
+)
 
 __all__ = [
     'ChartFactory',
@@ -38,5 +42,7 @@ __all__ = [
     'render_filter_panel',
     'render_download_button',
     'render_balance_sheet_summary',
-    'render_asset_liability_breakdown'
+    'render_asset_liability_breakdown',
+    'render_valuation_date_banner',
+    'render_compact_valuation_date'
 ]

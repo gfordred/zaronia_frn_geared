@@ -736,3 +736,37 @@ def render_composition_over_time(portfolio, repo_trades):
     
     df_bucket_attr = pd.DataFrame(bucket_table)
     st.dataframe(df_bucket_attr, use_container_width=True, hide_index=True)
+    
+    # Add totals summary row
+    st.markdown("###### 📊 Attribution Summary Totals")
+    
+    total_yield_contribution = sum(float(row['Yield Contribution'].rstrip('%')) for row in asset_table)
+    
+    summary_cols = st.columns(4)
+    summary_cols[0].metric("Total Portfolio Yield", f"{total_yield_contribution:.2f}%")
+    summary_cols[1].metric("Weighted Avg Spread", f"{sum(p.get('issue_spread', 0) * p.get('notional', 0) for p in portfolio) / total_notional:.0f} bps")
+    summary_cols[2].metric("Total Notional", f"R{total_notional/1e6:.0f}M")
+    summary_cols[3].metric("Number of Positions", len(portfolio))
+    
+    # Pie chart - Yield contribution by counterparty
+    st.markdown("###### Yield Contribution by Counterparty")
+    
+    fig_yield_pie = px.pie(
+        df_cpty_attr,
+        values=[float(x.rstrip('%')) for x in df_cpty_attr['Yield Contribution']],
+        names=df_cpty_attr['Counterparty'],
+        title='Portfolio Yield Contribution by Counterparty',
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+    
+    fig_yield_pie.update_traces(
+        textposition='inside',
+        textinfo='percent+label'
+    )
+    
+    fig_yield_pie.update_layout(
+        template='plotly_dark',
+        height=400
+    )
+    
+    st.plotly_chart(fig_yield_pie, use_container_width=True)
