@@ -31,17 +31,7 @@ def calculate_geared_yields(portfolio, repo_trades, jibar_rate=8.0):
     # Portfolio metrics
     total_notional = sum(pos.get('notional', 0) for pos in portfolio)
     
-    # Calculate FRN income (annual)
-    frn_income = 0
-    for pos in portfolio:
-        notional = pos.get('notional', 0)
-        spread_bps = pos.get('issue_spread', 0)
-        # Coupon rate = JIBAR (%) + spread (bps converted to %)
-        coupon_rate = (jibar_rate / 100) + (spread_bps / 10000)
-        annual_income = notional * coupon_rate
-        frn_income += annual_income
-    
-    # Calculate repo cost (annual)
+    # Calculate repo outstanding first (needed for geared income calculation)
     repo_cost = 0
     total_repo_outstanding = 0
     
@@ -64,6 +54,21 @@ def calculate_geared_yields(portfolio, repo_trades, jibar_rate=8.0):
     
     # Gearing metrics
     gearing = total_repo_outstanding / total_notional if total_notional > 0 else 0
+    
+    # Calculate FRN income (annual) on TOTAL GEARED ASSETS
+    # With gearing, we earn on: Base Portfolio + Borrowed Funds invested in FRNs
+    total_geared_notional = total_notional + total_repo_outstanding
+    
+    frn_income = 0
+    for pos in portfolio:
+        notional = pos.get('notional', 0)
+        spread_bps = pos.get('issue_spread', 0)
+        # Coupon rate = JIBAR (%) + spread (bps converted to %)
+        coupon_rate = (jibar_rate / 100) + (spread_bps / 10000)
+        # Scale income by gearing factor (earning on geared notional, not just base)
+        geared_notional = notional * (1 + gearing)
+        annual_income = geared_notional * coupon_rate
+        frn_income += annual_income
     
     # Average spreads (in bps)
     avg_frn_spread = sum(pos.get('issue_spread', 0) for pos in portfolio) / len(portfolio) if portfolio else 0
