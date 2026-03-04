@@ -2564,27 +2564,22 @@ try:
             
             # TAB 3: NAV Index
             with portfolio_tabs[2]:
-                st.info("""
-                **NAV (Net Asset Value) Calculation:**
-                
-                NAV tracks the true economic value of the portfolio, accounting for all operating cashflows.
-                
-                **Formula:**
-                ```
-                NAV = Seed Capital + Cumulative Operating Cashflows
-                ```
-                
-                **Operating Cashflows (impact NAV):**
-                - ✅ FRN coupon income (received)
-                - ✅ Repo interest expense (paid)
-                
-                **Financing Cashflows (balance sheet only, NOT in NAV):**
-                - ❌ Repo principal borrowed/repaid (liability movements)
-                
-                **Why This Matters:**
-                Repo borrowing is NOT income - it's a liability. Only the interest spread affects P&L.
-                The NAV index shows true portfolio performance, similar to a hedge fund NAV.
-                """)
+                st.info(
+                    "**NAV (Net Asset Value) Calculation:**\n\n" +
+                    "NAV tracks the true economic value of the portfolio, accounting for all operating cashflows.\n\n" +
+                    "**Formula:**\n" +
+                    "```\n" +
+                    "NAV = Seed Capital + Cumulative Operating Cashflows\n" +
+                    "```\n\n" +
+                    "**Operating Cashflows (impact NAV):**\n" +
+                    "- [YES] FRN coupon income (received)\n" +
+                    "- [YES] Repo interest expense (paid)\n\n" +
+                    "**Financing Cashflows (balance sheet only, NOT in NAV):**\n" +
+                    "- [NO] Repo principal borrowed/repaid (liability movements)\n\n" +
+                    "**Why This Matters:**\n" +
+                    "Repo borrowing is NOT income - it's a liability. Only the interest spread affects P&L. " +
+                    "The NAV index shows true portfolio performance, similar to a hedge fund NAV."
+                )
                 
                 if MODULES_LOADED:
                     render_nav_index(portfolio_positions, repo_trades)
