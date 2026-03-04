@@ -2488,8 +2488,9 @@ try:
                     equity_val = net_equity/1e6
                     seed_val = SEED_CAPITAL/1e6
                     
-                    st.markdown(f"""**Balance Sheet Equation:** `Assets = Liabilities + Equity`
-                    
+                    st.markdown(f"""
+**Balance Sheet Equation:** `Assets = Liabilities + Equity`
+
 **Assets (R{assets_val:.1f}M):**
 - Portfolio Market Value = R{assets_val:.1f}M (current worth)
 - Portfolio Notional = R{notional_val:.0f}M (face value)
