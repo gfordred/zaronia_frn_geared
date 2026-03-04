@@ -469,7 +469,7 @@ def render_professional_settlement_account(portfolio, repo_trades, seed_capital=
     }), use_container_width=True, height=400)
     
     # Export
-    if st.button("📥 Export Settlement Account (CSV)", key="export_settlement"):
+    if st.button("📥 Export Settlement Account (CSV)", key="export_settlement_proper"):
         csv = df_ledger.to_csv(index=False)
         st.download_button("Download CSV", csv, "settlement_account.csv", "text/csv")
     
