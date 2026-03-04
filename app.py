@@ -2548,7 +2548,7 @@ try:
                     render_net_yield_waterfall(metrics['frn_income'], metrics['repo_cost'])
                     
                     st.markdown("---")
-                    render_composition_over_time(portfolio_positions, repo_trades)
+                    render_composition_over_time(portfolio_positions, repo_trades, rates.get('JIBAR3M', 6.6))
                 else:
                     st.info("💡 Yield attribution module not loaded. Install enhancement modules.")
             

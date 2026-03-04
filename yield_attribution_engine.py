@@ -406,12 +406,15 @@ def render_yield_attribution(portfolio, repo_trades, jibar_rate=6.6):
         """)
 
 
-def render_composition_over_time(portfolio, repo_trades):
+def render_composition_over_time(portfolio, repo_trades, jibar_rate=6.6):
     """
-    Render portfolio composition evolution as layered area chart
-    Shows composition by counterparty over entire history
-    """
+    Render portfolio composition evolution over time
     
+    Args:
+        portfolio: List of portfolio positions
+        repo_trades: List of repo trades
+        jibar_rate: JIBAR 3M rate for yield calculations
+    """
     st.markdown("##### 📊 Portfolio Composition Over Time")
     
     # Get inception date (earliest start date)
