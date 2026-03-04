@@ -2408,6 +2408,26 @@ try:
                 "💰 Yield Attribution", 
                 "📈 NAV Index",
                 "🏦 Counterparty Risk",
+                "📊 Time Series",
+                "🕰️ Time Travel",
+                "✏️ Edit Portfolio"
+            ])
+            
+            # TAB 1: Portfolio Valuation
+            with portfolio_tabs[0]:
+                st.markdown("##### Current Portfolio Valuation")
+                
+                df_summary, tot_clean, tot_dv01, tot_cs01, kr_tots = get_portfolio_summary(
+                    portfolio_positions, jibar_curve, jibar_curve, settlement,
+                    day_count, calendar, zaronia_spread_bps,
+                    df_historical, df_zaronia, evaluation_date, rates)
+                
+                st.dataframe(df_summary, use_container_width=True, hide_index=True)
+                
+                # Asset/Liability Breakdown
+                st.markdown("##### 📊 Balance Sheet Summary")
+                
+                total_repo_cash = sum(r.get('cash_amount', 0) for r in repo_trades 
                                      if r.get('direction') == 'borrow_cash')
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
                 SEED_CAPITAL = 100_000_000  # R100M
