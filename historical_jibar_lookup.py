@@ -56,7 +56,8 @@ def get_jibar3m_on_date(target_date, df_historical=None, fallback_rate=6.63):
         return exact_match.iloc[0]['JIBAR3M']
     
     # Find closest date (within 5 business days)
-    df_historical['Days_Diff'] = abs((df_historical['Date_Only'] - target_date).dt.days)
+    # Convert to datetime for timedelta calculation
+    df_historical['Days_Diff'] = abs((pd.to_datetime(df_historical['Date_Only']) - pd.to_datetime(target_date)).dt.days)
     closest = df_historical.nsmallest(1, 'Days_Diff')
     
     if not closest.empty and closest.iloc[0]['Days_Diff'] <= 5:
