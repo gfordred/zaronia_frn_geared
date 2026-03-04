@@ -688,10 +688,11 @@ def build_zaronia_curve_daily(jibar_curve, spread_bps, settlement, day_count):
     calendar = get_sa_calendar()
 
     current_date = settlement
-    end_date = calendar.advance(settlement, 15, ql.Years, ql.ModifiedFollowing)
+    # Use direct date arithmetic instead of calendar.advance for compatibility
+    end_date = settlement + ql.Period(15, ql.Years)
 
     while current_date < end_date:
-        next_date = calendar.advance(current_date, 1, ql.Days, ql.ModifiedFollowing)
+        next_date = current_date + ql.Period(1, ql.Days)
         
         # Skip if next_date is not after current_date (shouldn't happen but safety check)
         if next_date <= current_date:
