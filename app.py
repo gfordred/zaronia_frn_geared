@@ -2432,9 +2432,16 @@ try:
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
                 SEED_CAPITAL = 100_000_000  # R100M
                 
-                # Calculate settlement account cash (from repo borrowing - not yet deployed)
-                # Settlement cash = Repo borrowed - Portfolio purchased
-                settlement_cash = total_repo_cash - total_notional
+                # Calculate settlement account cash
+                # Cash IN: Repo borrowing (R900M)
+                # Cash OUT: Portfolio purchases at notional (R1,000M)
+                # Net settlement cash = Borrowed - Spent = R900M - R1,000M = -R100M
+                # But we also have seed capital (R100M) which covers this
+                # So actual settlement cash = Seed + Repo - Portfolio = R100M + R900M - R1,000M = R0
+                
+                # For now, settlement cash represents uninvested/undeployed cash
+                # If we borrowed R900M but only bought R632.9M (MV), we have R267.1M cash
+                settlement_cash = total_repo_cash - tot_clean  # Cash not yet deployed into bonds
                 
                 # Balance Sheet Equation: Assets = Liabilities + Equity
                 total_assets = tot_clean + settlement_cash  # Market value of portfolio + cash
@@ -2519,6 +2526,17 @@ try:
                         f"- Equity = R{equity_val:.1f}M ✓\n" +
                         f"- Assets = Liabilities + Equity: R{assets_val:.1f}M = R{liab_val:.1f}M + R{equity_val:.1f}M ✓"
                     )
+                
+                st.markdown("---")
+                
+                # Settlement Account Tracker
+                st.markdown("##### 💰 Settlement Account Details")
+                
+                try:
+                    from settlement_account_tracker import render_settlement_account_tracker
+                    render_settlement_account_tracker(portfolio_positions, repo_trades, SEED_CAPITAL)
+                except Exception as e:
+                    st.warning(f"Settlement account tracker not available: {e}")
                 
                 st.markdown("---")
             
