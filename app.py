@@ -2620,19 +2620,16 @@ try:
             
             # TAB 5: Time Series
             with portfolio_tabs[4]:
-                st.info("""
-                **Portfolio Time Series Analysis:**
-                
-                Track how the portfolio has evolved over time:
-                
-                - **Notional Evolution:** See portfolio growth from seed capital through gearing
-                - **Gearing History:** Monitor leverage ratio over time (target: ~9x)
-                - **Composition Changes:** Track counterparty exposure shifts
-                - **Risk Metrics:** DV01/CS01 evolution as portfolio matures
-                
-                **Key Insight:** A well-managed geared portfolio maintains stable gearing while rotating positions
-                to optimize spread pickup and manage concentration risk.
-                """)
+                st.info(
+                    "**Portfolio Time Series Analysis:**\n\n" +
+                    "Track how the portfolio has evolved over time:\n\n" +
+                    "- **Notional Evolution:** See portfolio growth from seed capital through gearing\n" +
+                    "- **Gearing History:** Monitor leverage ratio over time (target: ~9x)\n" +
+                    "- **Composition Changes:** Track counterparty exposure shifts\n" +
+                    "- **Risk Metrics:** DV01/CS01 evolution as portfolio matures\n\n" +
+                    "**Key Insight:** A well-managed geared portfolio maintains stable gearing while rotating positions " +
+                    "to optimize spread pickup and manage concentration risk."
+                )
                 
                 if MODULES_LOADED:
                     render_portfolio_time_series(portfolio_positions, repo_trades)
