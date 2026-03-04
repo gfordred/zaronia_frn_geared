@@ -595,10 +595,144 @@ def render_composition_over_time(portfolio, repo_trades):
     fig_yields.update_traces(
         marker=dict(
             sizemode='diameter',
-            sizeref=2.*max(df_yields['Notional (M)'])/(20.**2),  # Reduced for much smaller bubbles
-            sizemin=4,  # Smaller minimum size
-            line=dict(width=1, color='white')
-        )
+            sizeref=2.*max(df_yields['Notional (M)'])/(40.**2),  # Much smaller bubbles for professional look
+            sizemin=3,
+            line=dict(width=0.5, color='rgba(255,255,255,0.4)')  # Subtle border
+        ),
+        opacity=0.8  # Slight transparency for overlapping bubbles
     )
     
     st.plotly_chart(fig_yields, use_container_width=True)
+    
+    # Yield Attribution by Counterparty
+    st.markdown("###### Yield Attribution by Counterparty/Bank")
+    
+    cpty_attribution = {}
+    total_notional = sum(p.get('notional', 0) for p in portfolio)
+    
+    for pos in portfolio:
+        cpty = pos.get('counterparty', 'Unknown')
+        notional = pos.get('notional', 0)
+        spread = pos.get('issue_spread', 0)
+        
+        if cpty not in cpty_attribution:
+            cpty_attribution[cpty] = {
+                'notional': 0,
+                'weighted_spread': 0,
+                'count': 0
+            }
+        
+        cpty_attribution[cpty]['notional'] += notional
+        cpty_attribution[cpty]['weighted_spread'] += spread * notional
+        cpty_attribution[cpty]['count'] += 1
+    
+    # Calculate weighted average spreads and yields
+    cpty_table = []
+    for cpty, data in sorted(cpty_attribution.items(), key=lambda x: x[1]['notional'], reverse=True):
+        avg_spread = data['weighted_spread'] / data['notional'] if data['notional'] > 0 else 0
+        gross_yield = 8.0 + (avg_spread / 100)  # JIBAR + spread
+        weight = (data['notional'] / total_notional * 100) if total_notional > 0 else 0
+        contribution = gross_yield * (weight / 100)
+        
+        cpty_table.append({
+            'Counterparty': cpty,
+            'Positions': data['count'],
+            'Notional': f"R{data['notional']/1e6:.1f}M",
+            'Weight': f"{weight:.1f}%",
+            'Avg Spread': f"{avg_spread:.0f} bps",
+            'Gross Yield': f"{gross_yield:.2f}%",
+            'Yield Contribution': f"{contribution:.2f}%"
+        })
+    
+    df_cpty_attr = pd.DataFrame(cpty_table)
+    st.dataframe(df_cpty_attr, use_container_width=True, hide_index=True)
+    
+    # Yield Attribution by Individual Asset
+    st.markdown("###### Yield Attribution by Individual Asset")
+    
+    asset_table = []
+    for pos in sorted(portfolio, key=lambda x: x.get('notional', 0), reverse=True):
+        name = pos.get('name', 'Unknown')
+        cpty = pos.get('counterparty', 'Unknown')
+        notional = pos.get('notional', 0)
+        spread = pos.get('issue_spread', 0)
+        maturity = pos.get('maturity')
+        
+        if isinstance(maturity, str):
+            maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
+        
+        years_to_mat = (maturity - current_date).days / 365.25
+        gross_yield = 8.0 + (spread / 100)
+        weight = (notional / total_notional * 100) if total_notional > 0 else 0
+        contribution = gross_yield * (weight / 100)
+        
+        asset_table.append({
+            'Position': name,
+            'Counterparty': cpty,
+            'Notional': f"R{notional/1e6:.1f}M",
+            'Weight': f"{weight:.1f}%",
+            'Spread': f"{spread:.0f} bps",
+            'Gross Yield': f"{gross_yield:.2f}%",
+            'Years to Mat': f"{years_to_mat:.1f}y",
+            'Yield Contribution': f"{contribution:.2f}%"
+        })
+    
+    df_asset_attr = pd.DataFrame(asset_table)
+    st.dataframe(df_asset_attr, use_container_width=True, hide_index=True)
+    
+    # Yield Attribution by Term Bucket
+    st.markdown("###### Yield Attribution by Term Bucket")
+    
+    # Define term buckets
+    term_buckets = {
+        '0-1Y': (0, 1),
+        '1-2Y': (1, 2),
+        '2-3Y': (2, 3),
+        '3-5Y': (3, 5),
+        '5-7Y': (5, 7),
+        '7-10Y': (7, 10),
+        '10Y+': (10, 100)
+    }
+    
+    bucket_attribution = {bucket: {'notional': 0, 'weighted_spread': 0, 'count': 0} 
+                         for bucket in term_buckets.keys()}
+    
+    for pos in portfolio:
+        notional = pos.get('notional', 0)
+        spread = pos.get('issue_spread', 0)
+        maturity = pos.get('maturity')
+        
+        if isinstance(maturity, str):
+            maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
+        
+        years_to_mat = (maturity - current_date).days / 365.25
+        
+        # Assign to bucket
+        for bucket, (min_y, max_y) in term_buckets.items():
+            if min_y <= years_to_mat < max_y:
+                bucket_attribution[bucket]['notional'] += notional
+                bucket_attribution[bucket]['weighted_spread'] += spread * notional
+                bucket_attribution[bucket]['count'] += 1
+                break
+    
+    # Calculate bucket yields
+    bucket_table = []
+    for bucket, data in bucket_attribution.items():
+        if data['notional'] > 0:
+            avg_spread = data['weighted_spread'] / data['notional']
+            gross_yield = 8.0 + (avg_spread / 100)
+            weight = (data['notional'] / total_notional * 100) if total_notional > 0 else 0
+            contribution = gross_yield * (weight / 100)
+            
+            bucket_table.append({
+                'Term Bucket': bucket,
+                'Positions': data['count'],
+                'Notional': f"R{data['notional']/1e6:.1f}M",
+                'Weight': f"{weight:.1f}%",
+                'Avg Spread': f"{avg_spread:.0f} bps",
+                'Gross Yield': f"{gross_yield:.2f}%",
+                'Yield Contribution': f"{contribution:.2f}%"
+            })
+    
+    df_bucket_attr = pd.DataFrame(bucket_table)
+    st.dataframe(df_bucket_attr, use_container_width=True, hide_index=True)
