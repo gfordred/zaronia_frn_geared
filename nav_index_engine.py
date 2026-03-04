@@ -105,7 +105,7 @@ def calculate_portfolio_mtm(portfolio, current_date, base_price=100.0):
     return total_mtm
 
 
-def build_nav_index(portfolio, repo_trades, seed_capital=100_000_000, jibar_rate=8.0):
+def build_nav_index(portfolio, repo_trades, inception_date, end_date, initial_nav=100_000_000, jibar_rate=8.0):
     """
     Build daily NAV index from inception to today
     
@@ -121,7 +121,9 @@ def build_nav_index(portfolio, repo_trades, seed_capital=100_000_000, jibar_rate
     Args:
         portfolio: List of FRN positions
         repo_trades: List of repo trades
-        seed_capital: Initial capital (default R100M)
+        inception_date: Start date for NAV calculation
+        end_date: End date for NAV calculation
+        initial_nav: Initial NAV value (default R100M = seed capital)
         jibar_rate: JIBAR 3M rate for calculations
         
     Returns:
@@ -133,17 +135,12 @@ def build_nav_index(portfolio, repo_trades, seed_capital=100_000_000, jibar_rate
     
     nav_data = []
     current_nav = initial_nav
-    previous_accrued = 0.0
-    previous_mtm = 0.0
     
     for current_date in date_range:
         current_date_obj = current_date.date()
         
-        # 1. Calculate cashflows on this date
-        daily_cashflow = 0.0
-        cashflow_details = []
-        
-        # FRN coupons (quarterly)
+        # FRN coupon income (quarterly)
+        frn_cf = 0.0
         for pos in portfolio:
             start = pos.get('start_date')
             if isinstance(start, str):
@@ -158,75 +155,41 @@ def build_nav_index(portfolio, repo_trades, seed_capital=100_000_000, jibar_rate
                     spread_bps = pos.get('issue_spread', 0)
                     coupon_rate = (jibar_rate / 100) + (spread_bps / 10000)
                     coupon = notional * coupon_rate * 0.25  # Quarterly
-                    
-                    daily_cashflow += coupon
-                    cashflow_details.append(f"Coupon {pos.get('name', 'Unknown')[:15]}: +{coupon:,.0f}")
+                    frn_cf += coupon
                     break
                 
                 current_check = current_check + timedelta(days=91)
         
-        # Repo cashflows
+        # Repo INTEREST EXPENSE ONLY (exclude principal - it's a liability, not P&L)
+        repo_interest_expense = 0.0
         for repo in repo_trades:
             spot_date = repo['spot_date'] if isinstance(repo['spot_date'], date) else datetime.strptime(repo['spot_date'], '%Y-%m-%d').date()
             end_date_repo = repo['end_date'] if isinstance(repo['end_date'], date) else datetime.strptime(repo['end_date'], '%Y-%m-%d').date()
             
-            cash = repo.get('cash_amount', 0)
-            spread = repo.get('repo_spread_bps', 0)
-            direction = repo.get('direction', 'borrow_cash')
-            
-            # Near leg
-            if current_date_obj == spot_date:
-                near_cf = cash if direction == 'borrow_cash' else -cash
-                daily_cashflow += near_cf
-                cashflow_details.append(f"Repo Near: {'+' if near_cf > 0 else ''}{near_cf:,.0f}")
-            
-            # Far leg
-            if current_date_obj == end_date_repo:
+            # ONLY count interest expense on maturity date
+            # Principal borrowed/repaid is NOT included in NAV (it's a balance sheet item)
+            if current_date_obj == end_date_repo and repo.get('direction') == 'borrow_cash':
+                cash = repo.get('cash_amount', 0)
+                spread = repo.get('repo_spread_bps', 0)
                 days = (end_date_repo - spot_date).days
                 repo_rate = (jibar_rate / 100) + (spread / 10000)
                 interest = cash * repo_rate * (days / 365.0)
-                
-                far_cf = -(cash + interest) if direction == 'borrow_cash' else (cash + interest)
-                daily_cashflow += far_cf
-                cashflow_details.append(f"Repo Far: {'+' if far_cf > 0 else ''}{far_cf:,.0f}")
+                repo_interest_expense -= interest  # Negative = expense
         
-        # 2. Calculate accrued interest
-        current_accrued = calculate_daily_accrued(portfolio, current_date_obj, jibar_rate)
-        accrual_change = current_accrued - previous_accrued
-        
-        # 3. Calculate MTM (mark-to-market is already absolute value, not change)
-        # For NAV, we don't add MTM daily - it's already reflected in portfolio value
-        # Only track MTM for reporting, not for NAV calculation
-        current_mtm = calculate_portfolio_mtm(portfolio, current_date_obj)
-        mtm_change = current_mtm - previous_mtm if previous_mtm > 0 else 0
-        
-        # 4. Update NAV
-        # NAV = Previous NAV + Cashflows + Accrual Change
-        # MTM is not added to NAV as it's a valuation metric, not a cash flow
-        nav_change = daily_cashflow + accrual_change
-        previous_nav = current_nav
-        current_nav = current_nav + nav_change
-        
-        # 5. Calculate Daily Return (%)
-        # Return should exclude cashflows and accruals - only reflect organic performance (MTM)
-        # Daily Return = MTM Change / Previous NAV
-        # This gives the true portfolio performance excluding cash additions/withdrawals
-        daily_return_pct = (mtm_change / previous_nav * 100) if previous_nav > 0 else 0
+        # Update NAV (Operating Cashflows Only)
+        # FRN coupons (income) + Repo interest (expense)
+        # Repo principal is EXCLUDED - it's a liability, not income
+        daily_change = frn_cf + repo_interest_expense
+        current_nav += daily_change
         
         # Store data
         nav_data.append({
             'Date': current_date_obj,
             'NAV': current_nav,
             'FRN_Coupons': frn_cf,
-            'Repo_Interest': repo_interest_expense,  # Interest only, not principal
-            'Daily_Change': nav_change,
-            'Accrued': current_accrued,
-            'MTM': current_mtm
+            'Repo_Interest': repo_interest_expense,
+            'Daily_Change': daily_change
         })
-        
-        # Update for next iteration
-        previous_accrued = current_accrued
-        previous_mtm = current_mtm
     
     return pd.DataFrame(nav_data)
 
@@ -278,7 +241,8 @@ def render_nav_index(portfolio, repo_trades):
     
     # Calculate NAV index
     with st.spinner("Calculating daily NAV index..."):
-        df_nav = calculate_daily_nav_index(portfolio, repo_trades, inception_date, end_date)
+        # Use seed capital (R100M) as initial NAV
+        df_nav = build_nav_index(portfolio, repo_trades, inception_date, end_date, initial_nav=100_000_000)
     
     if df_nav.empty:
         st.warning("Unable to calculate NAV index.")
@@ -294,9 +258,9 @@ def render_nav_index(portfolio, repo_trades):
     years_elapsed = days_elapsed / 365.25
     apy = ((current_nav / initial_nav) ** (1 / years_elapsed) - 1) * 100 if years_elapsed > 0 else 0
     
-    total_cashflows = df_nav['Cashflow'].sum()
-    total_accrual_change = df_nav['Accrual Change'].sum()
-    total_mtm_change = df_nav['MTM Change'].sum()
+    total_frn_coupons = df_nav['FRN_Coupons'].sum()
+    total_repo_interest = df_nav['Repo_Interest'].sum()
+    total_daily_change = df_nav['Daily_Change'].sum()
     
     max_nav = df_nav['NAV'].max()
     min_nav = df_nav['NAV'].min()
@@ -320,9 +284,9 @@ def render_nav_index(portfolio, repo_trades):
     m4.metric("Min NAV", f"{min_nav:,.2f}")
     
     m5, m6, m7, m8 = st.columns(4)
-    m5.metric("Total Cashflows", f"R{total_cashflows/1e6:.1f}M")
-    m6.metric("Total Accrual Δ", f"R{total_accrual_change/1e6:.1f}M")
-    m7.metric("Total MTM Δ", f"R{total_mtm_change/1e6:.1f}M")
+    m5.metric("Total FRN Coupons", f"R{total_frn_coupons/1e6:.1f}M")
+    m6.metric("Total Repo Interest", f"R{total_repo_interest/1e6:.1f}M")
+    m7.metric("Net P&L", f"R{total_daily_change/1e6:.1f}M")
     m8.metric("APY (Annualized)", f"{apy:+.2f}%")
     
     # NAV chart with dual y-axis
@@ -351,12 +315,12 @@ def render_nav_index(portfolio, repo_trades):
         secondary_y=False
     )
     
-    # Panel 1: MTM (secondary y-axis)
+    # Panel 1: Daily Change (secondary y-axis)
     fig.add_trace(
         go.Scatter(
             x=df_nav['Date'],
-            y=df_nav['MTM'],
-            name='MTM Δ',
+            y=df_nav['Daily_Change'],
+            name='Daily P&L',
             mode='lines',
             line=dict(color='#ff6b6b', width=2, dash='dot'),
             opacity=0.7
@@ -380,8 +344,8 @@ def render_nav_index(portfolio, repo_trades):
     fig.add_trace(
         go.Bar(
             x=df_nav['Date'],
-            y=df_nav['Cashflow'],
-            name='Cashflows',
+            y=df_nav['FRN_Coupons'],
+            name='FRN Coupons',
             marker_color='#00ff88'
         ),
         row=2, col=1
@@ -390,27 +354,17 @@ def render_nav_index(portfolio, repo_trades):
     fig.add_trace(
         go.Bar(
             x=df_nav['Date'],
-            y=df_nav['Accrual Change'],
-            name='Accrual Δ',
-            marker_color='#ffa500'
-        ),
-        row=2, col=1
-    )
-    
-    fig.add_trace(
-        go.Bar(
-            x=df_nav['Date'],
-            y=df_nav['MTM Change'],
-            name='MTM Δ',
+            y=df_nav['Repo_Interest'],
+            name='Repo Interest',
             marker_color='#ff6b6b'
         ),
         row=2, col=1
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="NAV Index", row=1, col=1, secondary_y=False)
-    fig.update_yaxes(title_text="MTM (R)", row=1, col=1, secondary_y=True)
-    fig.update_yaxes(title_text="Change", row=2, col=1)
+    fig.update_yaxes(title_text="NAV (R)", row=1, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="Daily P&L (R)", row=1, col=1, secondary_y=True)
+    fig.update_yaxes(title_text="Cashflow (R)", row=2, col=1)
     
     fig.update_layout(
         template='plotly_dark',
@@ -427,14 +381,12 @@ def render_nav_index(portfolio, repo_trades):
     
     df_recent = df_nav.tail(30).copy()
     
-    st.dataframe(df_recent[['Date', 'NAV', 'Cashflow', 'Accrual Change', 'MTM Change', 'Daily Change', 'Daily Return (%)']].style.format({
-        'NAV': '{:,.2f}',
-        'Cashflow': '{:,.2f}',
-        'Accrual Change': '{:,.2f}',
-        'MTM Change': '{:,.2f}',
-        'Daily Change': '{:+,.2f}',
-        'Daily Return (%)': '{:+.4f}'
-    }).background_gradient(subset=['Daily Change'], cmap='RdYlGn'),
+    st.dataframe(df_recent[['Date', 'NAV', 'FRN_Coupons', 'Repo_Interest', 'Daily_Change']].style.format({
+        'NAV': '{:,.0f}',
+        'FRN_Coupons': '{:,.0f}',
+        'Repo_Interest': '{:,.0f}',
+        'Daily_Change': '{:+,.0f}'
+    }).background_gradient(subset=['Daily_Change'], cmap='RdYlGn'),
     use_container_width=True, height=400)
     
     # Export
