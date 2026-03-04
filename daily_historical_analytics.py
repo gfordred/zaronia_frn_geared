@@ -42,8 +42,9 @@ def calculate_daily_portfolio_metrics(portfolio, df_historical, inception_date, 
         DataFrame with daily: MV, DV01, CS01, Notional, Active Positions, Gearing
     """
     
-    # Generate daily date range
-    date_range = pd.date_range(start=inception_date, end=end_date, freq='D')
+    # Generate daily date range - extend 12 months into future
+    future_end = end_date + timedelta(days=365)
+    date_range = pd.date_range(start=inception_date, end=future_end, freq='D')
     
     daily_metrics = []
     

@@ -25,9 +25,13 @@ Cumulative Cashflow for NAV = Operating only (excludes financing principal)
 import pandas as pd
 import numpy as np
 from datetime import date, datetime, timedelta
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import streamlit as st
+from historical_jibar_lookup import (
+    load_historical_jibar, 
+    get_jibar3m_on_date, 
+    calculate_repo_rate_accurate,
+    calculate_realized_coupon_accurate
+)
 
 
 def generate_professional_settlement_account(portfolio, repo_trades, seed_capital, inception_date, end_date, jibar_rate=6.63):
@@ -40,7 +44,7 @@ def generate_professional_settlement_account(portfolio, repo_trades, seed_capita
         seed_capital: Initial equity capital (e.g., R100M)
         inception_date: Portfolio inception date
         end_date: End date for analysis
-        jibar_rate: JIBAR 3M rate for coupon/interest calculations
+        jibar_rate: JIBAR 3M rate for coupon/interest calculations (fallback only)
         
     Returns:
         DataFrame with daily settlement account including:
@@ -50,8 +54,12 @@ def generate_professional_settlement_account(portfolio, repo_trades, seed_capita
         - Detailed ledger entries
     """
     
-    # Create daily date range
-    date_range = pd.date_range(start=inception_date, end=end_date, freq='D')
+    # Load historical JIBAR data for accurate rate lookups
+    df_historical = load_historical_jibar()
+    
+    # Create daily date range - extend 12 months into future for projections
+    future_end = end_date + timedelta(days=365)
+    date_range = pd.date_range(start=inception_date, end=future_end, freq='D')
     
     daily_ledger = []
     
@@ -91,14 +99,25 @@ def generate_professional_settlement_account(portfolio, repo_trades, seed_capita
                 # Generate quarterly coupons (simplified - every 91 days from start)
                 days_from_start = (current_date_obj - start).days
                 if days_from_start > 0 and days_from_start % 91 == 0:
-                    coupon_rate = (jibar_rate / 100) + (spread_bps / 10000)
-                    coupon_amount = notional * coupon_rate * 0.25  # Quarterly
+                    # Use actual historical JIBAR3M on reset date (91 days before payment)
+                    reset_date = current_date_obj - timedelta(days=91)
+                    actual_jibar = get_jibar3m_on_date(reset_date, df_historical, jibar_rate)
+                    
+                    # Calculate realized coupon using actual JIBAR
+                    coupon_amount = calculate_realized_coupon_accurate(
+                        reset_date, 
+                        current_date_obj, 
+                        notional, 
+                        spread_bps,
+                        df_historical,
+                        jibar_rate
+                    )
                     
                     daily_ledger.append({
                         'Date': current_date_obj,
                         'Type': 'FRN Coupon',
                         'Category': 'Operating',
-                        'Description': f'{name} - Coupon payment',
+                        'Description': f'{name} - Coupon payment (JIBAR {actual_jibar:.2f}% + {spread_bps}bps)',
                         'Operating_CF': coupon_amount,
                         'Financing_CF': 0,
                         'Investment_CF': 0,
@@ -147,9 +166,12 @@ def generate_professional_settlement_account(portfolio, repo_trades, seed_capita
             
             # FAR LEG - Split into Principal (Financing) and Interest (Operating)
             if current_date_obj == end_date_repo:
+                # Use actual historical JIBAR3M on repo spot date
+                actual_jibar_spot = get_jibar3m_on_date(spot_date, df_historical, jibar_rate)
+                repo_rate = calculate_repo_rate_accurate(spot_date, spread_bps, df_historical, jibar_rate)
+                
                 days = (end_date_repo - spot_date).days
-                repo_rate = (jibar_rate / 100) + (spread_bps / 10000)
-                interest = cash_amount * repo_rate * (days / 365.0)
+                interest = cash_amount * (repo_rate / 100) * (days / 365.0)
                 
                 if direction == 'borrow_cash':
                     # Repay borrowed cash
@@ -166,12 +188,12 @@ def generate_professional_settlement_account(portfolio, repo_trades, seed_capita
                         'Counterparty': 'Repo Counterparty'
                     })
                     
-                    # Interest payment = Operating expense
+                    # Interest payment = Operating expense (using actual JIBAR on spot date)
                     daily_ledger.append({
                         'Date': current_date_obj,
                         'Type': 'Repo Interest Expense',
                         'Category': 'Operating',
-                        'Description': f'{repo_id[:12]} - Interest expense',
+                        'Description': f'{repo_id[:12]} - Interest expense (JIBAR {actual_jibar_spot:.2f}% + {spread_bps}bps)',
                         'Operating_CF': -interest,  # Operating expense
                         'Financing_CF': 0,
                         'Investment_CF': 0,

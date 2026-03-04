@@ -110,7 +110,7 @@ def render_portfolio_time_series(portfolio, repo_trades):
         all_dates.append(start)
     
     inception_date = min(all_dates) if all_dates else date.today() - timedelta(days=365)
-    end_date = date.today()
+    end_date = date.today() + timedelta(days=365)  # Extend 12 months into future
     
     # Date range selector
     col1, col2 = st.columns(2)

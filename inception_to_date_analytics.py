@@ -130,9 +130,9 @@ def render_inception_cashflows(portfolio, repo_trades, jibar_rate=8.0):
     st.markdown("##### 💰 Complete Cashflow History (Inception to Date)")
     
     inception_date = get_inception_date(portfolio, repo_trades)
-    end_date = date.today()
+    end_date = date.today() + timedelta(days=365)  # Extend 12 months into future
     
-    st.info(f"📅 Portfolio Inception: **{inception_date}** | Days Active: **{(end_date - inception_date).days}**")
+    st.info(f"📅 Portfolio Inception: **{inception_date}** | Days Active: **{(date.today() - inception_date).days}** | Projection: **+12 months**")
     
     # Calculate all cashflows
     df_cf = calculate_inception_cashflows(portfolio, repo_trades, inception_date, end_date, jibar_rate)
@@ -293,7 +293,7 @@ def render_risk_evolution(portfolio):
     st.markdown("##### 📊 Risk Exposure Evolution (Inception to Date)")
     
     inception_date = get_inception_date(portfolio, [])
-    end_date = date.today()
+    end_date = date.today() + timedelta(days=365)  # Extend 12 months into future
     
     # Calculate risk evolution
     df_risk = calculate_risk_evolution(portfolio, inception_date, end_date)

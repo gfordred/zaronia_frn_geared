@@ -274,9 +274,9 @@ def render_nav_index(portfolio, repo_trades):
         all_dates.append(trade_date)
     
     inception_date = min(all_dates) if all_dates else date.today() - timedelta(days=365)
-    end_date = date.today()
+    end_date = date.today() + timedelta(days=365)  # Extend 12 months into future
     
-    st.info(f"📅 **Inception Date:** {inception_date} | **Days Active:** {(end_date - inception_date).days:,}")
+    st.info(f"📅 **Inception Date:** {inception_date} | **Days Active:** {(date.today() - inception_date).days:,} | **Projection:** +12 months")
     
     # Calculate NAV index
     with st.spinner("Calculating daily NAV index..."):

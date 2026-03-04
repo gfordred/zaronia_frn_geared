@@ -40,6 +40,7 @@ try:
     from settlement_account_proper import render_professional_settlement_account
     from counterparty_risk_manager import render_counterparty_risk_manager
     from daily_historical_analytics import render_daily_historical_analytics
+    from asset_repo_visualization import render_asset_repo_visualization
     from tab_descriptions import render_tab_description
     from portfolio_time_series import render_portfolio_time_series
     from funding_risk_analysis import render_funding_risk_analysis
@@ -2981,6 +2982,12 @@ try:
                 m2.metric("Total Reverse (Lend)", f"R{total_reverse:,.2f}")
                 m3.metric("Net Repo Financing", f"R{net_financing:,.2f}")
                 
+                # Add Asset/Repo Visualization
+                st.markdown("---")
+                if MODULES_LOADED:
+                    render_asset_repo_visualization(portfolio_positions, repo_trades)
+                
+                st.markdown("---")
                 st.markdown("##### Recent Repo Trades")
                 recent_repos = sorted(repo_trades, key=lambda x: x.get('trade_date', date.today()), reverse=True)[:10]
                 for repo in recent_repos:
