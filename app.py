@@ -2418,17 +2418,16 @@ try:
                 st.markdown("##### Current Portfolio Valuation")
                 
                 st.info("""
-                **Portfolio Valuation Logic:**
                 
-                - **Clean Price:** Present value of all future cashflows (coupons + principal) discounted using JIBAR curve
-                - **DV01 (Dollar Value of 1bp):** Change in portfolio value for 1bp parallel shift in JIBAR curve
-                - **CS01 (Credit Spread 01):** Change in portfolio value for 1bp parallel shift in credit spreads
-                - **Gearing:** Ratio of repo debt to portfolio notional (leverage multiplier)
-                
-                FRNs are valued using QuantLib with South African market conventions (ACT/365, Modified Following, Quarterly resets).
-                """)
-                
-                df_summary, tot_clean, tot_dv01, tot_cs01, kr_tots = get_portfolio_summary(
+                # Solve for ZARONIA spread
+                try:
+                    z_spread = solve_dm(
+                        pv_j_ois, basis_nom, 0.0, basis_sett, mat,
+                        build_zaronia_curve_daily(jibar_curve, zaronia_spread_bps, settlement, day_count),
+                        zaronia_curve, basis_sett,
+                        day_count, calendar, 'ZARONIA',
+                        zaronia_spread_bps, basis_lb, df_historical, df_zaronia,
+                        zaronia_dict, jibar_dict)
                     portfolio_positions, jibar_curve, jibar_curve, settlement,
                     day_count, calendar, zaronia_spread_bps,
                     df_historical, df_zaronia, evaluation_date, rates)
@@ -2520,6 +2519,10 @@ try:
             
             # TAB 2: Yield Attribution
             with portfolio_tabs[1]:
+                # Valuation date banner
+                from src.ui import render_valuation_date_banner
+                render_valuation_date_banner(valuation_date=evaluation_date)
+                
                 st.info("""
                 **Yield Attribution Framework:**
                 
@@ -2540,6 +2543,20 @@ try:
                 
                 if MODULES_LOADED:
                     render_yield_attribution(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
+                    
+                    # Add repo cost attribution
+                    st.markdown("---")
+                    from repo_cost_attribution import render_repo_cost_attribution, render_net_yield_waterfall
+                    
+                    # Calculate FRN income for waterfall
+                    from yield_attribution_engine import calculate_geared_yields
+                    metrics = calculate_geared_yields(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
+                    
+                    render_repo_cost_attribution(repo_trades, rates.get('JIBAR3M', 8.0))
+                    
+                    st.markdown("---")
+                    render_net_yield_waterfall(metrics['frn_income'], metrics['repo_cost'])
+                    
                     st.markdown("---")
                     render_composition_over_time(portfolio_positions, repo_trades)
                 else:
