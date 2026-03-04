@@ -2484,6 +2484,10 @@ try:
                     mtm_val = (total_assets - total_notional)/1e6
                     mtm_pct_val = ((total_assets - total_notional)/total_notional*100)
                     
+                    liab_val = total_liabilities/1e6
+                    equity_val = net_equity/1e6
+                    seed_val = SEED_CAPITAL/1e6
+                    
                     st.markdown(f"""
                     **Balance Sheet Equation:** `Assets = Liabilities + Equity`
                     
@@ -2498,11 +2502,6 @@ try:
                     - Notional is the original face value
                     - Difference = Unrealized gain/loss from price changes
                     
-                    liab_val = total_liabilities/1e6
-                    equity_val = net_equity/1e6
-                    seed_val = SEED_CAPITAL/1e6
-                    
-                    st.markdown(f"""
                     **Liabilities (R{liab_val:.1f}M):**
                     - Repo Outstanding = R{liab_val:.1f}M
                     - Borrowed funds used to buy FRNs
