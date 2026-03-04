@@ -5,11 +5,17 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, datetime, timedelta
 import os
+import sys
 import traceback
 import json
 import uuid
 import copy
 from pathlib import Path
+
+# Add project root to Python path for src imports
+project_root = Path(__file__).parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Import canonical pricing and curve modules
 from src.pricing import (
