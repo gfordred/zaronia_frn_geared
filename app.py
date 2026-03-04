@@ -656,7 +656,7 @@ def build_jibar_curve_with_diagnostics(eval_date, r, shift_bps=0.0):
     for tenor, key in [(2, "SASW2"), (3, "SASW3"), (5, "SASW5"), (10, "SASW10")]:
         try:
             sched = ql.Schedule(settlement,
-                                calendar.advance(settlement, ql.Period(tenor, ql.Years)),
+                                calendar.advance(settlement, ql.Period(tenor, ql.Years), ql.ModifiedFollowing),
                                 ql.Period(3, ql.Months), calendar,
                                 ql.ModifiedFollowing, ql.ModifiedFollowing,
                                 ql.DateGeneration.Forward, False)
@@ -687,10 +687,10 @@ def build_zaronia_curve_daily(jibar_curve, spread_bps, settlement, day_count):
     calendar = get_sa_calendar()
 
     current_date = settlement
-    end_date = calendar.advance(settlement, ql.Period(15, ql.Years))
+    end_date = calendar.advance(settlement, ql.Period(15, ql.Years), ql.ModifiedFollowing)
 
     while current_date < end_date:
-        next_date = calendar.advance(current_date, 1, ql.Days)
+        next_date = calendar.advance(current_date, 1, ql.Days, ql.ModifiedFollowing)
         
         # Skip if next_date is not after current_date (shouldn't happen but safety check)
         if next_date <= current_date:
@@ -1952,7 +1952,7 @@ try:
                 'Type': 'Deposit',
                 'Tenor': '3M',
                 'Rate (%)': rates['JIBAR3M'],
-                'Maturity': calendar.advance(settlement, ql.Period(3, ql.Months)).ISO()
+                'Maturity': calendar.advance(settlement, ql.Period(3, ql.Months), ql.ModifiedFollowing).ISO()
             })
             
             # FRAs
@@ -1963,7 +1963,7 @@ try:
                     'Type': 'FRA',
                     'Tenor': f'{start_m}x{end_m}',
                     'Rate (%)': rates[f'FRA_{label}'],
-                    'Maturity': calendar.advance(settlement, ql.Period(end_m, ql.Months)).ISO()
+                    'Maturity': calendar.advance(settlement, ql.Period(end_m, ql.Months), ql.ModifiedFollowing).ISO()
                 })
             
             # Swaps
@@ -1974,7 +1974,7 @@ try:
                     'Type': 'IRS',
                     'Tenor': f'{years}Y',
                     'Rate (%)': rates[key],
-                    'Maturity': calendar.advance(settlement, ql.Period(years, ql.Years)).ISO()
+                    'Maturity': calendar.advance(settlement, ql.Period(years, ql.Years), ql.ModifiedFollowing).ISO()
                 })
             
             df_market = pd.DataFrame(market_rates_data)
@@ -2129,7 +2129,7 @@ try:
             
             for d in fwd_dates:
                 if d >= settlement:
-                    d_end = calendar.advance(d, ql.Period(3, ql.Months))
+                    d_end = calendar.advance(d, ql.Period(3, ql.Months), ql.ModifiedFollowing)
                     j_fwd = jibar_curve.forwardRate(d, d_end, day_count, ql.Simple).rate() * 100
                     z_fwd = zaronia_curve.forwardRate(d, d_end, day_count, ql.Simple).rate() * 100
                     
@@ -2200,8 +2200,8 @@ try:
             ]
             
             for label, start_m, end_m, market_rate in fra_specs:
-                d_start = calendar.advance(settlement, ql.Period(start_m, ql.Months))
-                d_end = calendar.advance(settlement, ql.Period(end_m, ql.Months))
+                d_start = calendar.advance(settlement, ql.Period(start_m, ql.Months), ql.ModifiedFollowing)
+                d_end = calendar.advance(settlement, ql.Period(end_m, ql.Months), ql.ModifiedFollowing)
                 
                 # Implied forward from curve
                 implied_fwd = jibar_curve.forwardRate(d_start, d_end, day_count, ql.Simple).rate() * 100
