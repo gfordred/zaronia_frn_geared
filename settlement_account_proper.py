@@ -290,9 +290,14 @@ def render_professional_settlement_account(portfolio, repo_trades, seed_capital=
     - **Financing Cashflows** (balance sheet): Repo principal borrowed/repaid
     - **Investment Cashflows**: Initial capital, FRN purchases
     
-    **NAV = Seed Capital + Cumulative Operating Cashflows**
+    **NAV = Seed Capital + Cumulative Operating Cashflows** ← True portfolio value
     
-    ⚠️ Repo principal is NOT income - it's a liability!
+    ⚠️ **Critical:** Repo principal is NOT income - it's a liability!
+    
+    📊 **Chart 3 shows:** NAV (green) vs Gross Cash (orange dotted)
+    - **NAV** = What you actually own (Operating CF only)
+    - **Gross Cash** = Includes borrowed funds (misleading - shows repo principal)
+    - **Always use NAV** for portfolio valuation!
     """)
     
     # Get date range
@@ -350,8 +355,8 @@ def render_professional_settlement_account(portfolio, repo_trades, seed_capital=
         rows=3, cols=1,
         subplot_titles=(
             'Daily Cashflows by Category',
-            'NAV Evolution (Operating CF Only)',
-            'Cash Balance (All Cashflows)'
+            'NAV Evolution (Operating CF Only - True Portfolio Value)',
+            'NAV vs Gross Cash (NAV excludes repo principal)'
         ),
         vertical_spacing=0.1,
         row_heights=[0.35, 0.35, 0.3]
@@ -399,22 +404,39 @@ def render_professional_settlement_account(portfolio, repo_trades, seed_capital=
                  opacity=0.5, row=2, col=1,
                  annotation_text=f"Seed Capital (R{seed_capital/1e6:.0f}M)")
     
-    # Panel 3: Cash balance
+    # Panel 3: NAV vs Gross Cash comparison
+    # NAV = True portfolio value (Operating CF only)
+    fig.add_trace(go.Scatter(
+        x=df_daily['Date'],
+        y=df_daily['NAV'] / 1e6,
+        name='NAV (True Value)',
+        mode='lines',
+        line=dict(color='#00ff88', width=3),
+        fill='tozeroy',
+        fillcolor='rgba(0, 255, 136, 0.2)',
+        legendgroup='comparison'
+    ), row=3, col=1)
+    
+    # Gross Cash = Includes borrowed funds (misleading!)
     fig.add_trace(go.Scatter(
         x=df_daily['Date'],
         y=df_daily['Cash_Balance'] / 1e6,
-        name='Cash Balance',
+        name='Gross Cash (incl. borrowed)',
         mode='lines',
-        line=dict(color='orange', width=3),
-        fill='tozeroy',
-        fillcolor='rgba(255, 165, 0, 0.2)',
-        legendgroup='cash'
+        line=dict(color='orange', width=2, dash='dot'),
+        opacity=0.6,
+        legendgroup='comparison'
     ), row=3, col=1)
+    
+    # Add seed capital reference line
+    fig.add_hline(y=seed_capital/1e6, line_dash="dash", line_color="white", 
+                 opacity=0.3, row=3, col=1,
+                 annotation_text=f"Seed Capital (R{seed_capital/1e6:.0f}M)")
     
     # Update axes
     fig.update_yaxes(title_text="Cashflow (R)", row=1, col=1)
     fig.update_yaxes(title_text="NAV (R millions)", row=2, col=1)
-    fig.update_yaxes(title_text="Cash (R millions)", row=3, col=1)
+    fig.update_yaxes(title_text="Value (R millions)", row=3, col=1)
     fig.update_xaxes(title_text="Date", row=3, col=1)
     
     fig.update_layout(
