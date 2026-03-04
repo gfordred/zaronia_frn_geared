@@ -83,7 +83,7 @@ def calculate_repo_cost_attribution(repo_trades, jibar_rate=8.0):
     }
 
 
-def render_repo_cost_attribution(repo_trades, jibar_rate=8.0):
+def render_repo_cost_attribution(repo_trades, jibar_rate=6.6):
     """
     Render comprehensive repo cost attribution analysis
     """

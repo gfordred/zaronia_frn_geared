@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def calculate_daily_accrued(portfolio, current_date, jibar_rate=8.0):
+def calculate_daily_accrued(portfolio, current_date, jibar_rate=6.6):
     """
     Calculate total accrued interest for portfolio on a specific date
     
@@ -105,7 +105,7 @@ def calculate_portfolio_mtm(portfolio, current_date, base_price=100.0):
     return total_mtm
 
 
-def build_nav_index(portfolio, repo_trades, inception_date, end_date, initial_nav=100_000_000, jibar_rate=8.0):
+def build_nav_index(portfolio, repo_trades, inception_date, end_date, initial_nav=100_000_000, jibar_rate=6.6):
     """
     Build daily NAV index from inception to today
     
@@ -395,7 +395,7 @@ def render_nav_index(portfolio, repo_trades):
         st.download_button("Download CSV", csv, "nav_index_history.csv", "text/csv")
 
 
-def render_repo_master_table_and_summary(repo_trades, jibar_rate=8.0):
+def render_repo_master_table_and_summary(repo_trades, jibar_rate=6.6):
     """
     Render comprehensive repo master table and inception summary
     """

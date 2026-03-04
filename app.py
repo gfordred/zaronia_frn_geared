@@ -2532,7 +2532,7 @@ try:
                 )
                 
                 if MODULES_LOADED:
-                    render_yield_attribution(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
+                    render_yield_attribution(portfolio_positions, repo_trades, rates.get('JIBAR3M', 6.6))
                     
                     # Add repo cost attribution
                     st.markdown("---")
@@ -2540,9 +2540,9 @@ try:
                     
                     # Calculate FRN income for waterfall
                     from yield_attribution_engine import calculate_geared_yields
-                    metrics = calculate_geared_yields(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
+                    metrics = calculate_geared_yields(portfolio_positions, repo_trades, rates.get('JIBAR3M', 6.6))
                     
-                    render_repo_cost_attribution(repo_trades, rates.get('JIBAR3M', 8.0))
+                    render_repo_cost_attribution(repo_trades, rates.get('JIBAR3M', 6.6))
                     
                     st.markdown("---")
                     render_net_yield_waterfall(metrics['frn_income'], metrics['repo_cost'])
@@ -2578,7 +2578,7 @@ try:
                     st.markdown("---")
                     st.markdown("### 📊 Complete History Since Inception")
                     
-                    render_inception_cashflows(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
+                    render_inception_cashflows(portfolio_positions, repo_trades, rates.get('JIBAR3M', 6.6))
                     
                     st.markdown("---")
                     st.markdown("### 💰 Professional Settlement Account (Proper Accounting)")
@@ -2829,16 +2829,16 @@ try:
                     
                     st.markdown("---")
                     
-                    render_cashflow_waterfall(portfolio_positions, repo_trades, hist_start, hist_end, rates.get('JIBAR3M', 8.0))
+                    render_cashflow_waterfall(portfolio_positions, repo_trades, hist_start, hist_end, rates.get('JIBAR3M', 6.6))
                     
                     st.markdown("---")
                     
-                    render_yield_evolution(portfolio_positions, repo_trades, hist_start, hist_end, rates.get('JIBAR3M', 8.0))
+                    render_yield_evolution(portfolio_positions, repo_trades, hist_start, hist_end, rates.get('JIBAR3M', 6.6))
             
             # TAB 2: Master Table
         with repo_subtabs[1]:
             if MODULES_LOADED:
-                render_repo_master_table_and_summary(repo_trades, rates.get('JIBAR3M', 8.0))
+                render_repo_master_table_and_summary(repo_trades, rates.get('JIBAR3M', 6.6))
             else:
                 st.info("💡 Master table module not loaded.")
                 if repo_trades:

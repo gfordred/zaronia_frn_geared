@@ -124,7 +124,7 @@ def calculate_inception_cashflows(portfolio, repo_trades, inception_date, end_da
     return df
 
 
-def render_inception_cashflows(portfolio, repo_trades, jibar_rate=8.0):
+def render_inception_cashflows(portfolio, repo_trades, jibar_rate=6.6):
     """Render complete cashflow history from day 1"""
     
     st.markdown("##### 💰 Complete Cashflow History (Inception to Date)")

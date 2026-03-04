@@ -20,7 +20,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 
 
-def calculate_geared_yields(portfolio, repo_trades, jibar_rate=8.0):
+def calculate_geared_yields(portfolio, repo_trades, jibar_rate=6.6):
     """
     Calculate comprehensive yield metrics showing gearing impact
     
@@ -123,7 +123,7 @@ def calculate_geared_yields(portfolio, repo_trades, jibar_rate=8.0):
     }
 
 
-def render_yield_attribution(portfolio, repo_trades, jibar_rate=8.0):
+def render_yield_attribution(portfolio, repo_trades, jibar_rate=6.6):
     """
     Render comprehensive yield attribution showing gearing impact
     """
@@ -747,7 +747,7 @@ def render_composition_over_time(portfolio, repo_trades):
     for bucket, data in bucket_attribution.items():
         if data['notional'] > 0:
             avg_spread = data['weighted_spread'] / data['notional']
-            gross_yield = 8.0 + (avg_spread / 100)
+            gross_yield = jibar_rate + (avg_spread / 100)
             weight = (data['notional'] / total_notional * 100) if total_notional > 0 else 0
             contribution = gross_yield * (weight / 100)
             
