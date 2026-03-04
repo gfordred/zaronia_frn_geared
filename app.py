@@ -17,24 +17,25 @@ project_root = Path(__file__).parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# Import canonical pricing and curve modules
-from src.pricing import (
-    price_frn,
-    calculate_dv01_cs01,
-    calculate_key_rate_dv01,
-    solve_dm,
-    calculate_compounded_zaronia,
-    to_ql_date,
-    get_lookup_dict,
-    get_historical_rate
-)
-from src.curves import (
-    build_jibar_curve,
-    build_jibar_curve_with_diagnostics,
-    build_key_rate_curves,
-    build_zaronia_curve_daily
-)
-from src.core import get_sa_calendar
+# Temporarily disable src imports until module structure is fixed
+# TODO: Re-enable after fixing module imports on Streamlit Cloud
+# from src.pricing import (
+#     price_frn,
+#     calculate_dv01_cs01,
+#     calculate_key_rate_dv01,
+#     solve_dm,
+#     calculate_compounded_zaronia,
+#     to_ql_date,
+#     get_lookup_dict,
+#     get_historical_rate
+# )
+# from src.curves import (
+#     build_jibar_curve,
+#     build_jibar_curve_with_diagnostics,
+#     build_key_rate_curves,
+#     build_zaronia_curve_daily
+# )
+# from src.core import get_sa_calendar
 
 # Import ALL enhancement modules for Bloomberg-beating features
 try:
@@ -804,11 +805,13 @@ def build_key_rate_curves(eval_date, r, day_count, key_tenors=None):
     return kr_curves
 
 
-# # =============================================================================
-# # SECTION 3: FRN PRICING ENGINE (Proper Projection/Discount Separation)
-# # =============================================================================
+# =============================================================================
+# SECTION 3: FRN PRICING ENGINE (Proper Projection/Discount Separation)
+# =============================================================================
+# NOTE: Temporarily restored local functions while fixing src module imports
+# TODO: Remove once src.pricing imports are working on Streamlit Cloud
 
-# def get_lookup_dict(df, col_name):
+def get_lookup_dict(df, col_name):
 #     """Create {date: value} dict for O(1) lookup."""
 #     if df is None or col_name not in df.columns:
 #         return {}

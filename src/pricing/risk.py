@@ -5,8 +5,12 @@ Risk Calculations - CANONICAL
 Single source of truth for DV01, CS01, and key-rate risk calculations.
 """
 
-import QuantLib as ql
-from .frn import price_frn
+try:
+    import QuantLib as ql
+    from .frn import price_frn
+except ImportError:
+    import QuantLib as ql
+    from src.pricing.frn import price_frn
 
 
 def calculate_dv01_cs01(nominal, issue_spread, dm, start, end,
