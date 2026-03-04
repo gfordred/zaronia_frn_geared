@@ -102,8 +102,10 @@ class PortfolioAggregator:
         # Repo cost rate = JIBAR + avg repo spread
         repo_cost_rate = jibar_rate + (avg_repo_spread / 100)
         
-        # Gearing
-        gearing = total_repo / total_notional
+        # Gearing - CORRECTED
+        # Gearing = Repo Outstanding / Seed Capital (NOT Total Notional)
+        SEED_CAPITAL = 100_000_000  # R100M
+        gearing = total_repo / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
         
         # Net yield = Gross yield + (Spread pickup × (Gearing - 1))
         spread_pickup = avg_frn_spread - avg_repo_spread

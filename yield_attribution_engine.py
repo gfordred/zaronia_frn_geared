@@ -52,8 +52,11 @@ def calculate_geared_yields(portfolio, repo_trades, jibar_rate=8.0):
                 annual_cost = cash * repo_rate
                 repo_cost += annual_cost
     
-    # Gearing metrics
-    gearing = total_repo_outstanding / total_notional if total_notional > 0 else 0
+    # Gearing metrics - CORRECTED
+    # Gearing = Repo Outstanding / Seed Capital (NOT Total Notional)
+    # This shows true leverage: how many times we've borrowed relative to equity
+    SEED_CAPITAL = 100_000_000  # R100M
+    gearing = total_repo_outstanding / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
     
     # Calculate FRN income (annual) on TOTAL GEARED ASSETS
     # With gearing, we earn on: Base Portfolio + Borrowed Funds invested in FRNs

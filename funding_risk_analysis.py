@@ -143,7 +143,9 @@ def render_funding_risk_analysis(portfolio, repo_trades):
     total_notional = sum(p.get('notional', 0) for p in portfolio)
     total_repo = sum(r.get('cash_amount', 0) for r in repo_trades if r.get('direction') == 'borrow_cash' and 
                      (r['end_date'] if isinstance(r['end_date'], date) else datetime.strptime(r['end_date'], '%Y-%m-%d').date()) >= date.today())
-    current_gearing = total_repo / total_notional if total_notional > 0 else 0
+    # CORRECTED: Gearing = Repo / Seed Capital (NOT Notional)
+    SEED_CAPITAL = 100_000_000  # R100M
+    current_gearing = total_repo / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
     
     # Summary metrics
     st.markdown("##### Current Funding Position")

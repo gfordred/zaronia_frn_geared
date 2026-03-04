@@ -52,7 +52,9 @@ def calculate_daily_portfolio_metrics(portfolio, repo_trades, start_date, end_da
         # Metrics
         total_notional = active_positions['notional'].sum() if len(active_positions) > 0 else 0
         total_repo = active_repos['cash_amount'].sum() if len(active_repos) > 0 else 0
-        gearing = total_repo / total_notional if total_notional > 0 else 0
+        # CORRECTED: Gearing = Repo / Seed Capital (NOT Notional)
+        SEED_CAPITAL = 100_000_000  # R100M
+        gearing = total_repo / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
         
         # Composition by counterparty
         composition = {}

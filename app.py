@@ -2431,7 +2431,9 @@ try:
                 total_repo_cash = sum(r.get('cash_amount', 0) for r in repo_trades 
                                      if r.get('direction') == 'borrow_cash')
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
-                gearing = total_repo_cash / total_notional if total_notional > 0 else 0
+                # CORRECTED: Gearing = Repo / Seed Capital (NOT Notional)
+                SEED_CAPITAL = 100_000_000  # R100M
+                gearing = total_repo_cash / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
                 
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("Total MV", f"R{tot_clean:,.2f}")
@@ -2617,7 +2619,9 @@ try:
                 # Metrics
                 total_notional = sum(p.get('notional', 0) for p in active_positions)
                 total_repo = sum(r.get('cash_amount', 0) for r in active_repos if r.get('direction') == 'borrow_cash')
-                gearing = total_repo / total_notional if total_notional > 0 else 0
+                # CORRECTED: Gearing = Repo / Seed Capital (NOT Notional)
+                SEED_CAPITAL = 100_000_000  # R100M
+                gearing = total_repo / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
                 
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("Active Positions", len(active_positions))
