@@ -1,6 +1,6 @@
 [
   {
-    "id": "cdedf02b-ac71-4382-9449-ee0cc84b3feb",
+    "id": "5fdecd41-815e-4c74-a504-c87665d86b33",
     "name": "RSA 2026 FRN",
     "counterparty": "Republic of South Africa",
     "notional": 170000000,
@@ -13,7 +13,7 @@
     "strategy": "Core"
   },
   {
-    "id": "2cd1b4af-2b25-49cb-82d5-bf21df83d708",
+    "id": "f9c992e3-2fd4-4ec4-bf2f-497f2e439fea",
     "name": "RSA 2027 FRN",
     "counterparty": "Republic of South Africa",
     "notional": 170000000,
@@ -26,7 +26,7 @@
     "strategy": "Core"
   },
   {
-    "id": "bea44771-c0e2-4170-9ea8-9731afe2feb9",
+    "id": "944c0eab-817f-4c61-a264-67c959619041",
     "name": "RSA 2029 FRN",
     "counterparty": "Republic of South Africa",
     "notional": 170000000,
@@ -39,7 +39,7 @@
     "strategy": "Core"
   },
   {
-    "id": "91c1c95c-0fe7-4111-9a89-f1d77433dfd6",
+    "id": "e35d47e7-4d7d-4fbd-b10d-3655fc6e8115",
     "name": "Standard Bank FRN 2028",
     "counterparty": "Standard Bank",
     "notional": 120000000,
@@ -52,7 +52,7 @@
     "strategy": "Diversified"
   },
   {
-    "id": "e3f5e842-8d18-4a2a-be2d-b682d2ce3cbd",
+    "id": "6fa95e80-fe6c-487d-9622-61a68c1369c6",
     "name": "Nedbank FRN 2028",
     "counterparty": "Nedbank",
     "notional": 120000000,
@@ -65,7 +65,7 @@
     "strategy": "Diversified"
   },
   {
-    "id": "fae85358-563a-4a21-9c41-1579c21eb6ff",
+    "id": "216fdecf-13a4-48e5-ba93-cb87ad623472",
     "name": "Absa FRN 2028",
     "counterparty": "Absa",
     "notional": 120000000,
@@ -78,7 +78,7 @@
     "strategy": "Diversified"
   },
   {
-    "id": "9f56078f-9397-428d-b9ac-c8ba2584fdda",
+    "id": "07b8abbd-3897-4036-a78a-70de89cf510b",
     "name": "FirstRand FRN 2028",
     "counterparty": "FirstRand",
     "notional": 130000000,

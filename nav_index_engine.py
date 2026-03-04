@@ -105,23 +105,24 @@ def calculate_portfolio_mtm(portfolio, current_date, base_price=100.0):
     return total_mtm
 
 
-def calculate_daily_nav_index(portfolio, repo_trades, inception_date, end_date, 
-                               initial_nav=1000.0, jibar_rate=8.0):
+def build_nav_index(portfolio, repo_trades, seed_capital=100_000_000, jibar_rate=8.0):
     """
-    Calculate daily NAV index from inception to end date
+    Build daily NAV index from inception to today
     
-    NAV Components:
-    1. Cashflows: FRN coupons + Repo near/far legs
-    2. Accruals: Daily accrued interest on FRNs
-    3. MTM: Mark-to-market revaluation of portfolio
+    NAV Components (OPERATING CASHFLOWS ONLY):
+    1. Seed Capital (initial)
+    2. FRN Coupon Income (quarterly) - INCLUDED
+    3. Repo Interest Expense (daily accrual) - INCLUDED
+    
+    EXCLUDED (Financing Cashflows):
+    - Repo Principal Borrowed/Repaid - NOT included in NAV
+    - These are balance sheet movements, not P&L
     
     Args:
         portfolio: List of FRN positions
         repo_trades: List of repo trades
-        inception_date: First date of portfolio
-        end_date: Last date to calculate
-        initial_nav: Starting NAV value (default 1000.0)
-        jibar_rate: JIBAR rate for calculations
+        seed_capital: Initial capital (default R100M)
+        jibar_rate: JIBAR 3M rate for calculations
         
     Returns:
         DataFrame with daily NAV index
@@ -216,14 +217,11 @@ def calculate_daily_nav_index(portfolio, repo_trades, inception_date, end_date,
         nav_data.append({
             'Date': current_date_obj,
             'NAV': current_nav,
-            'Cashflow': daily_cashflow,
-            'Accrual': current_accrued,
-            'Accrual Change': accrual_change,
-            'MTM': current_mtm,
-            'MTM Change': mtm_change,
-            'Daily Change': nav_change,
-            'Daily Return (%)': daily_return_pct,
-            'Cashflow Details': ' | '.join(cashflow_details) if cashflow_details else 'No activity'
+            'FRN_Coupons': frn_cf,
+            'Repo_Interest': repo_interest_expense,  # Interest only, not principal
+            'Daily_Change': nav_change,
+            'Accrued': current_accrued,
+            'MTM': current_mtm
         })
         
         # Update for next iteration
@@ -459,6 +457,7 @@ def render_repo_master_table_and_summary(repo_trades, jibar_rate=8.0):
     # Build master table
     master_data = []
     
+    repo_interest_expense = 0.0
     for repo in repo_trades:
         trade_date = repo['trade_date'] if isinstance(repo['trade_date'], date) else datetime.strptime(repo['trade_date'], '%Y-%m-%d').date()
         spot_date = repo['spot_date'] if isinstance(repo['spot_date'], date) else datetime.strptime(repo['spot_date'], '%Y-%m-%d').date()
@@ -472,6 +471,9 @@ def render_repo_master_table_and_summary(repo_trades, jibar_rate=8.0):
         days = (end_date - spot_date).days
         repo_rate = (jibar_rate / 100) + (spread / 10000)
         interest = cash * repo_rate * (days / 365.0)
+        
+        if end_date == date.today() and direction == 'borrow_cash':
+            repo_interest_expense -= interest
         
         near_cf = cash if direction == 'borrow_cash' else -cash
         far_cf = -(cash + interest) if direction == 'borrow_cash' else (cash + interest)

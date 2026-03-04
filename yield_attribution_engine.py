@@ -645,6 +645,19 @@ def render_composition_over_time(portfolio, repo_trades):
         })
     
     df_cpty_attr = pd.DataFrame(cpty_table)
+    
+    # Add totals row
+    totals_cpty = {
+        'Counterparty': 'TOTAL',
+        'Positions': sum(row['Positions'] for row in cpty_table),
+        'Notional': f"R{sum(float(row['Notional'].replace('R', '').replace('M', '')) for row in cpty_table):.1f}M",
+        'Weight': '100.0%',
+        'Avg Spread': f"{sum(float(row['Avg Spread'].replace(' bps', '')) * float(row['Weight'].replace('%', '')) for row in cpty_table) / 100:.0f} bps",
+        'Gross Yield': f"{sum(float(row['Gross Yield'].replace('%', '')) * float(row['Weight'].replace('%', '')) for row in cpty_table) / 100:.2f}%",
+        'Yield Contribution': f"{sum(float(row['Yield Contribution'].replace('%', '')) for row in cpty_table):.2f}%"
+    }
+    df_cpty_attr = pd.concat([df_cpty_attr, pd.DataFrame([totals_cpty])], ignore_index=True)
+    
     st.dataframe(df_cpty_attr, use_container_width=True, hide_index=True)
     
     # Yield Attribution by Individual Asset
@@ -678,6 +691,20 @@ def render_composition_over_time(portfolio, repo_trades):
         })
     
     df_asset_attr = pd.DataFrame(asset_table)
+    
+    # Add totals row
+    totals_asset = {
+        'Position': 'TOTAL',
+        'Counterparty': '',
+        'Notional': f"R{sum(float(row['Notional'].replace('R', '').replace('M', '')) for row in asset_table):.1f}M",
+        'Weight': '100.0%',
+        'Spread': f"{sum(float(row['Spread'].replace(' bps', '')) * float(row['Weight'].replace('%', '')) for row in asset_table) / 100:.0f} bps",
+        'Gross Yield': f"{sum(float(row['Gross Yield'].replace('%', '')) * float(row['Weight'].replace('%', '')) for row in asset_table) / 100:.2f}%",
+        'Years to Mat': '',
+        'Yield Contribution': f"{sum(float(row['Yield Contribution'].replace('%', '')) for row in asset_table):.2f}%"
+    }
+    df_asset_attr = pd.concat([df_asset_attr, pd.DataFrame([totals_asset])], ignore_index=True)
+    
     st.dataframe(df_asset_attr, use_container_width=True, hide_index=True)
     
     # Yield Attribution by Term Bucket
@@ -735,6 +762,19 @@ def render_composition_over_time(portfolio, repo_trades):
             })
     
     df_bucket_attr = pd.DataFrame(bucket_table)
+    
+    # Add totals row
+    totals_bucket = {
+        'Term Bucket': 'TOTAL',
+        'Positions': sum(row['Positions'] for row in bucket_table),
+        'Notional': f"R{sum(float(row['Notional'].replace('R', '').replace('M', '')) for row in bucket_table):.1f}M",
+        'Weight': '100.0%',
+        'Avg Spread': f"{sum(float(row['Avg Spread'].replace(' bps', '')) * float(row['Weight'].replace('%', '')) for row in bucket_table) / 100:.0f} bps",
+        'Gross Yield': f"{sum(float(row['Gross Yield'].replace('%', '')) * float(row['Weight'].replace('%', '')) for row in bucket_table) / 100:.2f}%",
+        'Yield Contribution': f"{sum(float(row['Yield Contribution'].replace('%', '')) for row in bucket_table):.2f}%"
+    }
+    df_bucket_attr = pd.concat([df_bucket_attr, pd.DataFrame([totals_bucket])], ignore_index=True)
+    
     st.dataframe(df_bucket_attr, use_container_width=True, hide_index=True)
     
     # Add totals summary row
