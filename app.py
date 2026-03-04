@@ -688,7 +688,7 @@ def build_zaronia_curve_daily(jibar_curve, spread_bps, settlement, day_count):
     calendar = get_sa_calendar()
 
     current_date = settlement
-    end_date = calendar.advance(settlement, ql.Period(15, ql.Years), ql.ModifiedFollowing)
+    end_date = calendar.advance(settlement, 15, ql.Years, ql.ModifiedFollowing)
 
     while current_date < end_date:
         next_date = calendar.advance(current_date, 1, ql.Days, ql.ModifiedFollowing)
@@ -1883,12 +1883,21 @@ try:
                 'YTD Δ': '{:+.2f}'
             }), use_container_width=True, hide_index=True)
             
-            # Yield curve chart
-            fig_curve = go.Figure()
+            # Yield curve chart with period changes
+            from plotly.subplots import make_subplots
+            
+            fig_curve = make_subplots(
+                rows=2, cols=1,
+                row_heights=[0.7, 0.3],
+                subplot_titles=('Complete ZAR Yield Curve', 'Period Changes (1 Week)'),
+                vertical_spacing=0.12,
+                specs=[[{"secondary_y": False}], [{"secondary_y": False}]]
+            )
             
             # Color by type
             type_colors = {'OIS': '#9b59b6', 'Deposit': '#00d4ff', 'FRA': '#ffa500', 'Swap': '#00ff88'}
             
+            # Top panel: Yield curve
             for inst_type in df_curve['Type'].unique():
                 df_type = df_curve[df_curve['Type'] == inst_type]
                 fig_curve.add_trace(go.Scatter(
@@ -1899,18 +1908,38 @@ try:
                     line=dict(color=type_colors.get(inst_type, '#ffffff'), width=3),
                     marker=dict(size=10),
                     hovertemplate='<b>%{text}</b><br>Term: %{x:.2f}Y<br>Rate: %{y:.4f}%<extra></extra>',
-                    text=df_type['Instrument']
-                ))
+                    text=df_type['Instrument'],
+                    showlegend=True
+                ), row=1, col=1)
+            
+            # Bottom panel: Period changes as bars
+            bar_colors = ['#00ff88' if x >= 0 else '#ff6b6b' for x in df_curve['1W Δ']]
+            
+            fig_curve.add_trace(go.Bar(
+                x=df_curve['Term'],
+                y=df_curve['1W Δ'],
+                name='1W Change',
+                marker=dict(color=bar_colors),
+                hovertemplate='<b>%{text}</b><br>Term: %{x:.2f}Y<br>1W Δ: %{y:+.2f} bps<extra></extra>',
+                text=df_curve['Instrument'],
+                showlegend=False
+            ), row=2, col=1)
+            
+            # Add zero line for reference
+            fig_curve.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5, row=2, col=1)
+            
+            # Update axes
+            fig_curve.update_xaxes(title_text="Term (Years)", row=1, col=1)
+            fig_curve.update_xaxes(title_text="Term (Years)", row=2, col=1)
+            fig_curve.update_yaxes(title_text="Rate (%)", row=1, col=1)
+            fig_curve.update_yaxes(title_text="Change (bps)", row=2, col=1)
             
             fig_curve.update_layout(
-                title='Complete ZAR Yield Curve',
-                xaxis_title='Term (Years)',
-                yaxis_title='Rate (%)',
                 template='plotly_dark',
-                height=500,
+                height=800,
                 hovermode='closest',
                 showlegend=True,
-                legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+                legend=dict(orientation='h', yanchor='bottom', y=1.05, xanchor='right', x=1)
             )
             
             st.plotly_chart(fig_curve, use_container_width=True)
