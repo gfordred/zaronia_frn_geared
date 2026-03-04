@@ -595,11 +595,11 @@ def render_composition_over_time(portfolio, repo_trades):
     fig_yields.update_traces(
         marker=dict(
             sizemode='diameter',
-            sizeref=2.*max(df_yields['Notional (M)'])/(40.**2),  # Much smaller bubbles for professional look
-            sizemin=3,
-            line=dict(width=0.5, color='rgba(255,255,255,0.4)')  # Subtle border
+            sizeref=2.*max(df_yields['Notional (M)'])/(80.**2),  # MUCH smaller bubbles - professional look
+            sizemin=2,  # Minimum 2px
+            line=dict(width=0.3, color='rgba(255,255,255,0.3)')  # Very subtle border
         ),
-        opacity=0.8  # Slight transparency for overlapping bubbles
+        opacity=0.85  # Slight transparency for overlapping bubbles
     )
     
     st.plotly_chart(fig_yields, use_container_width=True)

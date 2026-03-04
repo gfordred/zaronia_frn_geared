@@ -2435,19 +2435,79 @@ try:
                 
                 st.dataframe(df_summary, use_container_width=True, hide_index=True)
                 
-                # Metrics
+                # Asset/Liability Breakdown
+                st.markdown("##### 📊 Balance Sheet Summary")
+                
                 total_repo_cash = sum(r.get('cash_amount', 0) for r in repo_trades 
                                      if r.get('direction') == 'borrow_cash')
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
-                # CORRECTED: Gearing = Repo / Seed Capital (NOT Notional)
                 SEED_CAPITAL = 100_000_000  # R100M
+                
+                # Balance Sheet Equation: Assets = Liabilities + Equity
+                total_assets = tot_clean  # Market value of portfolio
+                total_liabilities = total_repo_cash  # Repo outstanding
+                net_equity = total_assets - total_liabilities  # NAV
                 gearing = total_repo_cash / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
                 
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("Total MV", f"R{tot_clean:,.2f}")
-                m2.metric("DV01", f"R{tot_dv01:,.2f}")
-                m3.metric("CS01", f"R{tot_cs01:,.2f}")
-                m4.metric("Gearing", f"{gearing:.2f}x")
+                # Display balance sheet
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("**ASSETS**")
+                    st.metric("Portfolio MV", f"R{total_assets/1e6:.1f}M")
+                    st.caption(f"Notional: R{total_notional/1e6:.0f}M")
+                
+                with col2:
+                    st.markdown("**LIABILITIES**")
+                    st.metric("Repo Outstanding", f"R{total_liabilities/1e6:.1f}M")
+                    st.caption(f"Gearing: {gearing:.2f}x")
+                
+                with col3:
+                    st.markdown("**EQUITY (NAV)**")
+                    st.metric("Net Asset Value", f"R{net_equity/1e6:.1f}M")
+                    st.caption(f"Seed: R{SEED_CAPITAL/1e6:.0f}M")
+                
+                # Risk metrics row
+                st.markdown("##### 📈 Risk Metrics")
+                r1, r2, r3, r4 = st.columns(4)
+                r1.metric("DV01", f"R{tot_dv01:,.0f}")
+                r2.metric("CS01", f"R{tot_cs01:,.0f}")
+                r3.metric("Total MV", f"R{tot_clean/1e6:.1f}M")
+                r4.metric("Gearing", f"{gearing:.2f}x")
+                
+                # Explanation
+                with st.expander("ℹ️ Balance Sheet Calculation"):
+                    st.markdown(f"""
+                    **Balance Sheet Equation:** `Assets = Liabilities + Equity`
+                    
+                    **Assets (R{total_assets/1e6:.1f}M):**
+                    - Portfolio Market Value = R{total_assets/1e6:.1f}M
+                    - Portfolio Notional = R{total_notional/1e6:.0f}M
+                    - Funded by: Seed Capital + Repo Borrowing
+                    
+                    **Liabilities (R{total_liabilities/1e6:.1f}M):**
+                    - Repo Outstanding = R{total_liabilities/1e6:.1f}M
+                    - Borrowed funds used to buy FRNs
+                    - Must be repaid with interest
+                    
+                    **Equity / NAV (R{net_equity/1e6:.1f}M):**
+                    - Net Asset Value = Assets - Liabilities
+                    - NAV = R{total_assets/1e6:.1f}M - R{total_liabilities/1e6:.1f}M = R{net_equity/1e6:.1f}M
+                    - This is what you actually own
+                    
+                    **Gearing ({gearing:.2f}x):**
+                    - Formula: Repo Outstanding / Seed Capital
+                    - Gearing = R{total_liabilities/1e6:.0f}M / R{SEED_CAPITAL/1e6:.0f}M = {gearing:.2f}x
+                    - For every R1 of equity, we borrowed R{gearing:.1f}
+                    
+                    **Verification:**
+                    - Assets = R{total_assets/1e6:.1f}M ✓
+                    - Liabilities = R{total_liabilities/1e6:.1f}M ✓
+                    - Equity = R{net_equity/1e6:.1f}M ✓
+                    - Assets = Liabilities + Equity: R{total_assets/1e6:.1f}M = R{total_liabilities/1e6:.1f}M + R{net_equity/1e6:.1f}M ✓
+                    """)
+                
+                st.markdown("---")
             
             # TAB 2: Yield Attribution
             with portfolio_tabs[1]:
