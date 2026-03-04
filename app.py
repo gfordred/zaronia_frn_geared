@@ -2498,26 +2498,31 @@ try:
                     - Notional is the original face value
                     - Difference = Unrealized gain/loss from price changes
                     
-                    **Liabilities (R{total_liabilities/1e6:.1f}M):**
-                    - Repo Outstanding = R{total_liabilities/1e6:.1f}M
+                    liab_val = total_liabilities/1e6
+                    equity_val = net_equity/1e6
+                    seed_val = SEED_CAPITAL/1e6
+                    
+                    st.markdown(f"""
+                    **Liabilities (R{liab_val:.1f}M):**
+                    - Repo Outstanding = R{liab_val:.1f}M
                     - Borrowed funds used to buy FRNs
                     - Must be repaid with interest
                     
-                    **Equity / NAV (R{net_equity/1e6:.1f}M):**
+                    **Equity / NAV (R{equity_val:.1f}M):**
                     - Net Asset Value = Assets - Liabilities
-                    - NAV = R{total_assets/1e6:.1f}M - R{total_liabilities/1e6:.1f}M = R{net_equity/1e6:.1f}M
+                    - NAV = R{assets_val:.1f}M - R{liab_val:.1f}M = R{equity_val:.1f}M
                     - This is what you actually own
                     
                     **Gearing ({gearing:.2f}x):**
                     - Formula: Repo Outstanding / Seed Capital
-                    - Gearing = R{total_liabilities/1e6:.0f}M / R{SEED_CAPITAL/1e6:.0f}M = {gearing:.2f}x
+                    - Gearing = R{liab_val:.0f}M / R{seed_val:.0f}M = {gearing:.2f}x
                     - For every R1 of equity, we borrowed R{gearing:.1f}
                     
                     **Verification:**
-                    - Assets = R{total_assets/1e6:.1f}M ✓
-                    - Liabilities = R{total_liabilities/1e6:.1f}M ✓
-                    - Equity = R{net_equity/1e6:.1f}M ✓
-                    - Assets = Liabilities + Equity: R{total_assets/1e6:.1f}M = R{total_liabilities/1e6:.1f}M + R{net_equity/1e6:.1f}M ✓
+                    - Assets = R{assets_val:.1f}M ✓
+                    - Liabilities = R{liab_val:.1f}M ✓
+                    - Equity = R{equity_val:.1f}M ✓
+                    - Assets = Liabilities + Equity: R{assets_val:.1f}M = R{liab_val:.1f}M + R{equity_val:.1f}M ✓
                     """)
                 
                 st.markdown("---")
