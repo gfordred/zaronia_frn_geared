@@ -2408,36 +2408,6 @@ try:
                 "💰 Yield Attribution", 
                 "📈 NAV Index",
                 "🏦 Counterparty Risk",
-                "📉 Time Series",
-                "🕰️ Time Travel",
-                "✏️ Edit Portfolio"
-            ])
-            
-            # TAB 1: Current Valuation
-            with portfolio_tabs[0]:
-                st.markdown("##### Current Portfolio Valuation")
-                
-                st.info("""
-                
-                # Solve for ZARONIA spread
-                try:
-                    z_spread = solve_dm(
-                        pv_j_ois, basis_nom, 0.0, basis_sett, mat,
-                        build_zaronia_curve_daily(jibar_curve, zaronia_spread_bps, settlement, day_count),
-                        zaronia_curve, basis_sett,
-                        day_count, calendar, 'ZARONIA',
-                        zaronia_spread_bps, basis_lb, df_historical, df_zaronia,
-                        zaronia_dict, jibar_dict)
-                    portfolio_positions, jibar_curve, jibar_curve, settlement,
-                    day_count, calendar, zaronia_spread_bps,
-                    df_historical, df_zaronia, evaluation_date, rates)
-                
-                st.dataframe(df_summary, use_container_width=True, hide_index=True)
-                
-                # Asset/Liability Breakdown
-                st.markdown("##### 📊 Balance Sheet Summary")
-                
-                total_repo_cash = sum(r.get('cash_amount', 0) for r in repo_trades 
                                      if r.get('direction') == 'borrow_cash')
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
                 SEED_CAPITAL = 100_000_000  # R100M
