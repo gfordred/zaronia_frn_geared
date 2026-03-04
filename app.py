@@ -11,6 +11,25 @@ import uuid
 import copy
 from pathlib import Path
 
+# Import canonical pricing and curve modules
+from src.pricing import (
+    price_frn,
+    calculate_dv01_cs01,
+    calculate_key_rate_dv01,
+    solve_dm,
+    calculate_compounded_zaronia,
+    to_ql_date,
+    get_lookup_dict,
+    get_historical_rate
+)
+from src.curves import (
+    build_jibar_curve,
+    build_jibar_curve_with_diagnostics,
+    build_key_rate_curves,
+    build_zaronia_curve_daily
+)
+from src.core import get_sa_calendar
+
 # Import ALL enhancement modules for Bloomberg-beating features
 try:
     from easy_editors import render_easy_portfolio_editor, render_easy_repo_editor
