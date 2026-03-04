@@ -2479,13 +2479,18 @@ try:
                 
                 # Explanation
                 with st.expander("ℹ️ Balance Sheet Calculation"):
+                    assets_val = total_assets/1e6
+                    notional_val = total_notional/1e6
+                    mtm_val = (total_assets - total_notional)/1e6
+                    mtm_pct_val = ((total_assets - total_notional)/total_notional*100)
+                    
                     st.markdown(f"""
                     **Balance Sheet Equation:** `Assets = Liabilities + Equity`
                     
-                    **Assets (R{total_assets/1e6:.1f}M):**
-                    - Portfolio Market Value = R{total_assets/1e6:.1f}M (current worth)
-                    - Portfolio Notional = R{total_notional/1e6:.0f}M (face value)
-                    - **MTM P&L = R{(total_assets - total_notional)/1e6:.1f}M ({((total_assets - total_notional)/total_notional*100):+.1f}%)**
+                    **Assets (R{assets_val:.1f}M):**
+                    - Portfolio Market Value = R{assets_val:.1f}M (current worth)
+                    - Portfolio Notional = R{notional_val:.0f}M (face value)
+                    - **MTM P&L = R{mtm_val:.1f}M ({mtm_pct_val:+.1f}%)**
                     - Funded by: Seed Capital + Repo Borrowing
                     
                     ⚠️ **Important:** MV ≠ Notional
