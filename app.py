@@ -163,7 +163,11 @@ NCD_PRICING_FILE = "ncd_pricing.json"
 def load_portfolio():
     """Load portfolio positions from JSON."""
     data = load_json_file(PORTFOLIO_FILE, {"positions": []})
-    positions = data.get("positions", [])
+    # Handle both list format (new) and dict format (old)
+    if isinstance(data, list):
+        positions = data
+    else:
+        positions = data.get("positions", [])
     # Deserialize date strings to date objects
     for pos in positions:
         if 'start_date' in pos and isinstance(pos['start_date'], str):
@@ -179,7 +183,11 @@ def save_portfolio(positions: list):
 def load_repo_trades():
     """Load repo trades from JSON."""
     data = load_json_file(REPO_FILE, {"trades": []})
-    trades = data.get("trades", [])
+    # Handle both list format (new) and dict format (old)
+    if isinstance(data, list):
+        trades = data
+    else:
+        trades = data.get("trades", [])
     # Deserialize date strings to date objects
     for trade in trades:
         if 'trade_date' in trade and isinstance(trade['trade_date'], str):
