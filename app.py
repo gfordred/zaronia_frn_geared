@@ -2640,15 +2640,22 @@ try:
             with portfolio_tabs[5]:
                 st.markdown("##### 🕰️ Time Travel - Historical Portfolio Analysis")
                 
-                st.info("""
-                **Time Travel Functionality:**
-                
-                Select any historical date to:
-                - Value portfolio as of that date
-                - See active positions on that date
-                - View repo trades active on that date
-                - Calculate gearing and metrics for that date
-                """)
+                st.info(
+                    "**Time Travel Functionality:**\n\n" +
+                    "Select any historical date to:\n" +
+                    "- Value portfolio as of that date\n" +
+                    "- See active positions on that date\n" +
+                    "- View repo trades active on that date\n" +
+                    "- Calculate gearing and metrics for that date"
+                    "\n" +
+                    "- Performance review and reporting" +
+                    "\n" +
+                    "- Historical risk analysis" +
+                    "\n" +
+                    "- Trade decision validation" +
+                    "\n" +
+                    "- Audit trail and compliance"
+                )
                 
                 # Get inception date
                 all_dates = []
