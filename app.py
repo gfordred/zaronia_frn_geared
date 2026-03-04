@@ -2535,12 +2535,12 @@ try:
                 - **Gross Yield:** FRN coupon income / Portfolio notional (JIBAR + avg FRN spread)
                 - **Repo Cost Rate:** Repo interest / Repo outstanding (JIBAR + repo spread)
                 - **Spread Pickup:** FRN spread - Repo spread (typically 100-120 bps for this portfolio)
-                - **Gearing Benefit:** Spread pickup × Gearing ratio
+                - **Gearing Benefit:** Spread pickup x Gearing ratio
                 - **Net Yield:** Gross yield + Gearing benefit (return on equity)
                 
                 **Example:** With 9x gearing and 120 bps spread pickup:
                 - Base yield: 7.93% (JIBAR 6.63% + 130 bps FRN spread)
-                - Gearing benefit: 120 bps × 9 = 10.8%
+                - Gearing benefit: 120 bps x 9 = 10.8%
                 - **Total return on equity: ~18.7%**
                 """)
                 
