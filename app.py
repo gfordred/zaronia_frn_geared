@@ -1837,7 +1837,12 @@ try:
                 })
             
             # FRAs
-            fra_map = {'FRA3X6': (0.5, 'FRA'), 'FRA6X9': (0.75, 'FRA'), 'FRA9X12': (1.0, 'FRA')}
+            fra_map = {
+                'FRA3X6': (0.5, 'FRA'),
+                'FRA6X9': (0.75, 'FRA'),
+                'FRA9X12': (1.0, 'FRA'),
+                'FRA18X21': (1.75, 'FRA')
+            }
             for fra_name, (term, inst_type) in fra_map.items():
                 if fra_name in df_merged.columns:
                     curve_data.append({
@@ -1851,7 +1856,7 @@ try:
                     })
             
             # Swaps
-            swap_map = {'SASW2': 2, 'SASW3': 3, 'SASW5': 5, 'SASW7': 7, 'SASW10': 10, 'SASW15': 15, 'SASW20': 20}
+            swap_map = {'SASW1': 1, 'SASW2': 2, 'SASW3': 3, 'SASW5': 5, 'SASW7': 7, 'SASW10': 10, 'SASW15': 15, 'SASW20': 20}
             for swap_name, term in swap_map.items():
                 if swap_name in df_merged.columns:
                     curve_data.append({
