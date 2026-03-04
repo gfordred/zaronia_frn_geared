@@ -1,0 +1,22 @@
+{
+  "assets": {
+    "total_portfolio_notional": 1000000000,
+    "repod_assets": 1000000000,
+    "free_assets": 0,
+    "repod_percentage": 100.0
+  },
+  "liabilities": {
+    "total_repo_outstanding": 900000000,
+    "number_of_repos": 7
+  },
+  "equity": {
+    "seed_capital": 100000000,
+    "net_equity": 100000000,
+    "gearing_ratio": 9.0
+  },
+  "collateral_tracking": {
+    "positions_used_as_collateral": 7,
+    "total_positions": 7,
+    "collateral_utilization_pct": 100.0
+  }
+}

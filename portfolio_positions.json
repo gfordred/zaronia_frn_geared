@@ -1,0 +1,93 @@
+[
+  {
+    "id": "583bb416-7b73-4ba1-b5db-6a2ad76d92ab",
+    "name": "RSA 2026 FRN",
+    "counterparty": "Republic of South Africa",
+    "notional": 170000000,
+    "start_date": "2025-03-04",
+    "maturity": "2028-03-03",
+    "issue_spread": 120,
+    "dm": 120,
+    "index": "JIBAR 3M",
+    "book": "Sovereign",
+    "strategy": "Core"
+  },
+  {
+    "id": "01cd96db-6080-483b-99fb-3c32f3b8c37a",
+    "name": "RSA 2027 FRN",
+    "counterparty": "Republic of South Africa",
+    "notional": 170000000,
+    "start_date": "2025-03-04",
+    "maturity": "2029-03-03",
+    "issue_spread": 125,
+    "dm": 125,
+    "index": "JIBAR 3M",
+    "book": "Sovereign",
+    "strategy": "Core"
+  },
+  {
+    "id": "b86ab9ad-b82d-4a63-8bb9-608e09c50228",
+    "name": "RSA 2029 FRN",
+    "counterparty": "Republic of South Africa",
+    "notional": 170000000,
+    "start_date": "2025-03-04",
+    "maturity": "2031-03-03",
+    "issue_spread": 130,
+    "dm": 130,
+    "index": "JIBAR 3M",
+    "book": "Sovereign",
+    "strategy": "Core"
+  },
+  {
+    "id": "52bd7569-2933-4f8d-b043-c88dc918fdc3",
+    "name": "Standard Bank FRN 2028",
+    "counterparty": "Standard Bank",
+    "notional": 120000000,
+    "start_date": "2025-09-05",
+    "maturity": "2030-03-03",
+    "issue_spread": 110,
+    "dm": 110,
+    "index": "JIBAR 3M",
+    "book": "Bank",
+    "strategy": "Diversified"
+  },
+  {
+    "id": "e7787d2e-5bf9-4a8e-afbe-6f1c022b67c2",
+    "name": "Nedbank FRN 2028",
+    "counterparty": "Nedbank",
+    "notional": 120000000,
+    "start_date": "2025-09-05",
+    "maturity": "2030-03-03",
+    "issue_spread": 110,
+    "dm": 110,
+    "index": "JIBAR 3M",
+    "book": "Bank",
+    "strategy": "Diversified"
+  },
+  {
+    "id": "be80376d-4b4b-4639-bd1e-5ad2b752e447",
+    "name": "Absa FRN 2028",
+    "counterparty": "Absa",
+    "notional": 120000000,
+    "start_date": "2025-09-05",
+    "maturity": "2030-03-03",
+    "issue_spread": 118,
+    "dm": 118,
+    "index": "JIBAR 3M",
+    "book": "Bank",
+    "strategy": "Diversified"
+  },
+  {
+    "id": "a5ccb80a-2eb3-4d2e-9249-5e5a73da973d",
+    "name": "FirstRand FRN 2028",
+    "counterparty": "FirstRand",
+    "notional": 130000000,
+    "start_date": "2025-09-05",
+    "maturity": "2030-03-03",
+    "issue_spread": 127,
+    "dm": 127,
+    "index": "JIBAR 3M",
+    "book": "Bank",
+    "strategy": "Diversified"
+  }
+]
