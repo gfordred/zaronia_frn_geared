@@ -39,6 +39,7 @@ try:
     )
     from settlement_account_proper import render_professional_settlement_account
     from counterparty_risk_manager import render_counterparty_risk_manager
+    from daily_historical_analytics import render_daily_historical_analytics
     from tab_descriptions import render_tab_description
     from portfolio_time_series import render_portfolio_time_series
     from funding_risk_analysis import render_funding_risk_analysis
@@ -2747,6 +2748,11 @@ try:
                         seed_capital=100_000_000,  # R100M seed capital
                         jibar_rate=rates.get('JIBAR3M', 6.63)
                     )
+                    
+                    st.markdown("---")
+                    st.markdown("### 📊 Daily Historical Analytics (Every Day Since Inception)")
+                    
+                    render_daily_historical_analytics(portfolio_positions, repo_trades, df_historical)
                     
                     st.markdown("---")
                     
