@@ -52,13 +52,16 @@ def generate_clean_portfolio():
     for i, pos_def in enumerate(sovereign_positions):
         notional = round_to_nearest(sovereign_target / len(sovereign_positions))
         
+        # All positions start on INCEPTION DATE (not staggered)
+        inception_date = date.today() - timedelta(days=365)  # 1 year ago
+        
         positions.append({
             "id": str(uuid.uuid4()),
             "name": pos_def["name"],
             "counterparty": "Republic of South Africa",
             "notional": notional,
-            "start_date": (date.today() - timedelta(days=365)).isoformat(),
-            "maturity": (date.today() + timedelta(days=365 * pos_def["maturity_years"])).isoformat(),
+            "start_date": inception_date.isoformat(),
+            "maturity": (inception_date + timedelta(days=365 * pos_def["maturity_years"])).isoformat(),
             "issue_spread": pos_def["spread"],
             "dm": pos_def["spread"],
             "index": "JIBAR 3M",
@@ -82,13 +85,16 @@ def generate_clean_portfolio():
         spread_min, spread_max = COUNTERPARTIES[bank]["spread_range"]
         spread = spread_min + (i * 5)  # Vary spreads slightly
         
+        # All positions start on INCEPTION DATE (same as sovereign)
+        inception_date = date.today() - timedelta(days=365)  # 1 year ago
+        
         positions.append({
             "id": str(uuid.uuid4()),
             "name": f"{bank} FRN 2028",
             "counterparty": bank,
             "notional": notional,
-            "start_date": (date.today() - timedelta(days=180)).isoformat(),
-            "maturity": (date.today() + timedelta(days=365 * 4)).isoformat(),
+            "start_date": inception_date.isoformat(),
+            "maturity": (inception_date + timedelta(days=365 * 4)).isoformat(),
             "issue_spread": spread,
             "dm": spread,
             "index": "JIBAR 3M",
