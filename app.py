@@ -2488,41 +2488,42 @@ try:
                     equity_val = net_equity/1e6
                     seed_val = SEED_CAPITAL/1e6
                     
-                    st.markdown(f"""
-                    **Balance Sheet Equation:** `Assets = Liabilities + Equity`
-                    
-                    **Assets (R{assets_val:.1f}M):**
-                    - Portfolio Market Value = R{assets_val:.1f}M (current worth)
-                    - Portfolio Notional = R{notional_val:.0f}M (face value)
-                    - **MTM P&L = R{mtm_val:.1f}M ({mtm_pct_val:+.1f}%)**
-                    - Funded by: Seed Capital + Repo Borrowing
-                    
-                    ⚠️ **Important:** MV ≠ Notional
-                    - MV is what the bonds are worth TODAY (mark-to-market)
-                    - Notional is the original face value
-                    - Difference = Unrealized gain/loss from price changes
-                    
-                    **Liabilities (R{liab_val:.1f}M):**
-                    - Repo Outstanding = R{liab_val:.1f}M
-                    - Borrowed funds used to buy FRNs
-                    - Must be repaid with interest
-                    
-                    **Equity / NAV (R{equity_val:.1f}M):**
-                    - Net Asset Value = Assets - Liabilities
-                    - NAV = R{assets_val:.1f}M - R{liab_val:.1f}M = R{equity_val:.1f}M
-                    - This is what you actually own
-                    
-                    **Gearing ({gearing:.2f}x):**
-                    - Formula: Repo Outstanding / Seed Capital
-                    - Gearing = R{liab_val:.0f}M / R{seed_val:.0f}M = {gearing:.2f}x
-                    - For every R1 of equity, we borrowed R{gearing:.1f}
-                    
-                    **Verification:**
-                    - Assets = R{assets_val:.1f}M ✓
-                    - Liabilities = R{liab_val:.1f}M ✓
-                    - Equity = R{equity_val:.1f}M ✓
-                    - Assets = Liabilities + Equity: R{assets_val:.1f}M = R{liab_val:.1f}M + R{equity_val:.1f}M ✓
-                    """)
+                    balance_sheet_text = f"""
+**Balance Sheet Equation:** `Assets = Liabilities + Equity`
+
+**Assets (R{assets_val:.1f}M):**
+- Portfolio Market Value = R{assets_val:.1f}M (current worth)
+- Portfolio Notional = R{notional_val:.0f}M (face value)
+- MTM P&L = R{mtm_val:.1f}M ({mtm_pct_val:+.1f}%)
+- Funded by: Seed Capital + Repo Borrowing
+
+⚠️ **Important:** MV ≠ Notional
+- MV is what the bonds are worth TODAY (mark-to-market)
+- Notional is the original face value
+- Difference = Unrealized gain/loss from price changes
+
+**Liabilities (R{liab_val:.1f}M):**
+- Repo Outstanding = R{liab_val:.1f}M
+- Borrowed funds used to buy FRNs
+- Must be repaid with interest
+
+**Equity / NAV (R{equity_val:.1f}M):**
+- Net Asset Value = Assets - Liabilities
+- NAV = R{assets_val:.1f}M - R{liab_val:.1f}M = R{equity_val:.1f}M
+- This is what you actually own
+
+**Gearing ({gearing:.2f}x):**
+- Formula: Repo Outstanding / Seed Capital
+- Gearing = R{liab_val:.0f}M / R{seed_val:.0f}M = {gearing:.2f}x
+- For every R1 of equity, we borrowed R{gearing:.1f}
+
+**Verification:**
+- Assets = R{assets_val:.1f}M ✓
+- Liabilities = R{liab_val:.1f}M ✓
+- Equity = R{equity_val:.1f}M ✓
+- Assets = Liabilities + Equity: R{assets_val:.1f}M = R{liab_val:.1f}M + R{equity_val:.1f}M ✓
+"""
+                    st.markdown(balance_sheet_text)
                 
                 st.markdown("---")
             
