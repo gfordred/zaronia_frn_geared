@@ -254,6 +254,6 @@ def render_settlement_account_tracker(portfolio, repo_trades, seed_capital=100_0
     use_container_width=True, height=400)
     
     # Export option
-    if st.button("📥 Export Settlement Account History (CSV)", key="export_settlement"):
+    if st.button("📥 Export Settlement Account History (CSV)", key="export_settlement_tracker"):
         csv = df_settlement.to_csv(index=False)
         st.download_button("Download CSV", csv, "settlement_account_history.csv", "text/csv")
