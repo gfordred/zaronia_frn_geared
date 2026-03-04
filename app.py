@@ -2526,23 +2526,20 @@ try:
                 from src.ui import render_valuation_date_banner
                 render_valuation_date_banner(valuation_date=evaluation_date)
                 
-                st.info("""
-                **Yield Attribution Framework:**
-                
-                This analysis shows how gearing amplifies returns through the spread pickup between FRN coupons and repo financing costs.
-                
-                **Key Concepts:**
-                - **Gross Yield:** FRN coupon income / Portfolio notional (JIBAR + avg FRN spread)
-                - **Repo Cost Rate:** Repo interest / Repo outstanding (JIBAR + repo spread)
-                - **Spread Pickup:** FRN spread - Repo spread (typically 100-120 bps for this portfolio)
-                - **Gearing Benefit:** Spread pickup x Gearing ratio
-                - **Net Yield:** Gross yield + Gearing benefit (return on equity)
-                
-                **Example:** With 9x gearing and 120 bps spread pickup:
-                - Base yield: 7.93% (JIBAR 6.63% + 130 bps FRN spread)
-                - Gearing benefit: 120 bps x 9 = 10.8%
-                - **Total return on equity: ~18.7%**
-                """)
+                st.info(
+                    "**Yield Attribution Framework:**\n\n" +
+                    "This analysis shows how gearing amplifies returns through the spread pickup between FRN coupons and repo financing costs.\n\n" +
+                    "**Key Concepts:**\n" +
+                    "- **Gross Yield:** FRN coupon income / Portfolio notional (JIBAR + avg FRN spread)\n" +
+                    "- **Repo Cost Rate:** Repo interest / Repo outstanding (JIBAR + repo spread)\n" +
+                    "- **Spread Pickup:** FRN spread - Repo spread (typically 100-120 bps for this portfolio)\n" +
+                    "- **Gearing Benefit:** Spread pickup x Gearing ratio\n" +
+                    "- **Net Yield:** Gross yield + Gearing benefit (return on equity)\n\n" +
+                    "**Example:** With 9x gearing and 120 bps spread pickup:\n" +
+                    "- Base yield: 7.93% (JIBAR 6.63% + 130 bps FRN spread)\n" +
+                    "- Gearing benefit: 120 bps x 9 = 10.8%\n" +
+                    "- **Total return on equity: ~18.7%**"
+                )
                 
                 if MODULES_LOADED:
                     render_yield_attribution(portfolio_positions, repo_trades, rates.get('JIBAR3M', 8.0))
