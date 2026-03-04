@@ -683,12 +683,16 @@ def build_zaronia_curve_daily(jibar_curve, spread_bps, settlement, day_count):
     
     Fixed: Ensure we only calculate forward rates for dates >= settlement to avoid negative time errors
     """
+    # Ensure settlement is a QuantLib Date
+    if isinstance(settlement, date):
+        settlement = ql.Date(settlement.day, settlement.month, settlement.year)
+    
     dates = [settlement]
     dfs = [1.0]
     calendar = get_sa_calendar()
 
     current_date = settlement
-    # Use direct date arithmetic instead of calendar.advance for compatibility
+    # Use direct date arithmetic with QuantLib Date and Period
     end_date = settlement + ql.Period(15, ql.Years)
 
     while current_date < end_date:
