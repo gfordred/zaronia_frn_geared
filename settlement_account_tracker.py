@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 
 
-def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=100_000_000):
+def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=100_000_000, jibar_curve=None):
     """
     Calculate complete settlement account history showing all cash movements
     
@@ -17,9 +17,15 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
     - Seed capital injection
     - Repo borrowing (cash IN)
     - Portfolio purchases (cash OUT)
-    - FRN coupon receipts (cash IN)
+    - FRN coupon receipts (cash IN) - using forward JIBAR rates from curve
     - Repo interest payments (cash OUT)
     - Repo principal repayments (cash OUT)
+    
+    Args:
+        portfolio: List of FRN positions
+        repo_trades: List of repo trades
+        seed_capital: Initial equity capital (default R100M)
+        jibar_curve: QuantLib curve for forward rate projections (optional)
     
     Returns:
         DataFrame with daily settlement account balance
@@ -93,6 +99,7 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
         'Date': inception_date,
         'Type': 'Seed Capital',
         'Description': 'Initial capital injection',
+        'Days': 0,
         'Cash IN': seed_capital,
         'Cash OUT': 0,
         'Net Cashflow': seed_capital
@@ -111,6 +118,7 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
                 'Date': spot,
                 'Type': 'Repo Borrowing',
                 'Description': f"Repo {repo.get('id', 'Unknown')[:8]} - Borrow cash",
+                'Days': 0,
                 'Cash IN': cash_amt,
                 'Cash OUT': 0,
                 'Net Cashflow': cash_amt
@@ -128,12 +136,13 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
             'Date': start,
             'Type': 'Portfolio Purchase',
             'Description': f"Buy {pos.get('name', 'Unknown')} - R{notional:,.0f}",
+            'Days': 0,
             'Cash IN': 0,
             'Cash OUT': notional,
             'Net Cashflow': -notional
         })
     
-    # FRN Coupons (cash IN) - quarterly payments every 91 days
+    # FRN Coupons (cash IN) - quarterly payments using forward JIBAR rates
     for pos in portfolio:
         start = pos.get('start_date')
         maturity = pos.get('maturity')
@@ -145,23 +154,49 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
         notional = pos.get('notional', 0)
         spread = pos.get('issue_spread', 0)
         
-        # Generate quarterly coupon dates (every 91 days from start)
+        # Generate quarterly coupon dates
+        prev_coupon_date = start
         current_coupon_date = start + timedelta(days=91)
+        
         while current_coupon_date <= min(maturity, end_date):
-            # Estimate coupon: (JIBAR + spread) * notional * (91/365)
-            jibar_rate = 6.6 / 100  # Default JIBAR
-            coupon_rate = jibar_rate + (spread / 10000)
-            coupon_amount = notional * coupon_rate * (91 / 365.0)
+            # Calculate actual days in coupon period
+            actual_days = (current_coupon_date - prev_coupon_date).days
+            year_fraction = actual_days / 365.0
+            
+            # Use forward JIBAR rate if curve available, else fallback to spot
+            if jibar_curve:
+                try:
+                    import QuantLib as ql
+                    from src.core.daycount import get_act365_daycount
+                    
+                    # Convert dates to QuantLib
+                    ql_start = ql.Date(prev_coupon_date.day, prev_coupon_date.month, prev_coupon_date.year)
+                    ql_end = ql.Date(current_coupon_date.day, current_coupon_date.month, current_coupon_date.year)
+                    day_count = get_act365_daycount()
+                    
+                    # Get forward JIBAR rate for this period
+                    jibar_fwd = jibar_curve.forwardRate(ql_start, ql_end, day_count, ql.Simple).rate()
+                except:
+                    # Fallback to spot rate
+                    jibar_fwd = 6.6 / 100
+            else:
+                jibar_fwd = 6.6 / 100  # Default JIBAR
+            
+            # Calculate coupon: (Forward JIBAR + spread) * notional * year_fraction
+            coupon_rate = jibar_fwd + (spread / 10000)
+            coupon_amount = notional * coupon_rate * year_fraction
             
             cashflows.append({
                 'Date': current_coupon_date,
                 'Type': 'FRN Coupon',
-                'Description': f"{pos.get('name', 'Unknown')} - Quarterly coupon",
+                'Description': f"{pos.get('name', 'Unknown')} - Coupon (JIBAR fwd {jibar_fwd*100:.2f}% + {spread}bps)",
+                'Days': actual_days,
                 'Cash IN': coupon_amount,
                 'Cash OUT': 0,
                 'Net Cashflow': coupon_amount
             })
             
+            prev_coupon_date = current_coupon_date
             current_coupon_date += timedelta(days=91)
     
     # Repo repayments (far leg - cash OUT)
@@ -186,7 +221,8 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
             cashflows.append({
                 'Date': end,
                 'Type': 'Repo Repayment',
-                'Description': f"Repo {repo.get('id', 'Unknown')[:8]} - Repay principal + interest",
+                'Description': f"Repo {repo.get('id', 'Unknown')[:8]} - Repay principal + interest ({days} days)",
+                'Days': days,
                 'Cash IN': 0,
                 'Cash OUT': cash_amt + interest,
                 'Net Cashflow': -(cash_amt + interest)
@@ -207,9 +243,15 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
     return df
 
 
-def render_settlement_account_tracker(portfolio, repo_trades, seed_capital=100_000_000):
+def render_settlement_account_tracker(portfolio, repo_trades, seed_capital=100_000_000, jibar_curve=None):
     """
     Render comprehensive settlement account tracker with tables and charts
+    
+    Args:
+        portfolio: List of FRN positions
+        repo_trades: List of repo trades
+        seed_capital: Initial equity capital
+        jibar_curve: QuantLib curve for forward rate projections
     """
     
     st.markdown("##### 💰 Settlement Account Tracker")
@@ -217,14 +259,14 @@ def render_settlement_account_tracker(portfolio, repo_trades, seed_capital=100_0
     st.info(
         "**Settlement Account = Your Cash Account**\n\n" +
         "Tracks all cash movements:\n" +
-        "- **Cash IN:** Seed capital, Repo borrowing, FRN coupons\n" +
+        "- **Cash IN:** Seed capital, Repo borrowing, FRN coupons (using forward JIBAR rates)\n" +
         "- **Cash OUT:** Portfolio purchases, Repo repayments\n\n" +
         "**Balance Sheet Check:**\n" +
         "`Total Assets = Portfolio MV + Settlement Cash Balance`"
     )
     
-    # Calculate settlement account history
-    df_settlement = calculate_settlement_account_history(portfolio, repo_trades, seed_capital)
+    # Calculate settlement account history with forward rates
+    df_settlement = calculate_settlement_account_history(portfolio, repo_trades, seed_capital, jibar_curve)
     
     if df_settlement.empty:
         st.warning("No settlement account data available.")
@@ -310,6 +352,7 @@ def render_settlement_account_tracker(portfolio, repo_trades, seed_capital=100_0
     st.markdown("###### All Settlement Account Transactions")
     
     st.dataframe(df_settlement.style.format({
+        'Days': '{:.0f}',
         'Cash IN': 'R{:,.0f}',
         'Cash OUT': 'R{:,.0f}',
         'Net Cashflow': 'R{:+,.0f}',

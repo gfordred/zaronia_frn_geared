@@ -2628,7 +2628,7 @@ try:
                 
                 try:
                     from settlement_account_tracker import render_settlement_account_tracker
-                    render_settlement_account_tracker(portfolio_positions, repo_trades, SEED_CAPITAL)
+                    render_settlement_account_tracker(portfolio_positions, repo_trades, SEED_CAPITAL, jibar_curve)
                 except Exception as e:
                     st.warning(f"Settlement account tracker not available: {e}")
                 
