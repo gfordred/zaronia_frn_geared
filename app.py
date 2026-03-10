@@ -2680,7 +2680,7 @@ try:
                     from yield_attribution_engine import calculate_geared_yields
                     metrics = calculate_geared_yields(portfolio_positions, repo_trades, rates.get('JIBAR3M', 6.6))
                     
-                    render_repo_cost_attribution(repo_trades, rates.get('JIBAR3M', 6.6))
+                    render_repo_cost_attribution(repo_trades, portfolio_positions, rates.get('JIBAR3M', 6.6))
                     
                     st.markdown("---")
                     render_net_yield_waterfall(metrics['frn_income'], metrics['repo_cost'])

@@ -176,6 +176,9 @@ def render_easy_repo_editor(repo_trades, portfolio, save_callback):
                 ["None"] + [p.get('id', '') for p in portfolio],
                 format_func=lambda x: "No Collateral" if x == "None" else next((p.get('name', x) for p in portfolio if p.get('id') == x), x),
                 key="quick_repo_coll")
+            new_repo_cpty = st.selectbox("Repo Counterparty",
+                ["Repo Counterparty A", "Repo Counterparty B", "Repo Counterparty C", "Repo Counterparty D"],
+                key="quick_repo_cpty")
             new_cpn_to_lender = st.checkbox("Coupon to Lender", value=False, key="quick_repo_cpn")
         
         # Validation
@@ -193,6 +196,7 @@ def render_easy_repo_editor(repo_trades, portfolio, save_callback):
                 'repo_spread_bps': new_spread,
                 'direction': new_direction,
                 'collateral_id': new_collateral if new_collateral != "None" else None,
+                'repo_counterparty': new_repo_cpty,
                 'coupon_to_lender': new_cpn_to_lender
             }
             current_repos = repo_trades.copy()

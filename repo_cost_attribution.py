@@ -19,9 +19,14 @@ from datetime import date, datetime
 from plotly.subplots import make_subplots
 
 
-def calculate_repo_cost_attribution(repo_trades, jibar_rate=8.0):
+def calculate_repo_cost_attribution(repo_trades, portfolio=None, jibar_rate=8.0):
     """
     Calculate detailed repo cost attribution
+    
+    Args:
+        repo_trades: List of repo trades
+        portfolio: List of portfolio positions (to resolve collateral names)
+        jibar_rate: JIBAR rate in %
     
     Returns:
         dict with repo cost breakdowns
@@ -43,7 +48,19 @@ def calculate_repo_cost_attribution(repo_trades, jibar_rate=8.0):
             cash = repo.get('cash_amount', 0)
             spread_bps = repo.get('repo_spread_bps', 0)
             repo_id = repo.get('id', 'Unknown')
-            collateral_name = repo.get('collateral_name', 'Unknown')
+            
+            # Resolve collateral name from collateral_id
+            collateral_id = repo.get('collateral_id')
+            collateral_name = 'No Collateral'
+            if collateral_id and portfolio:
+                # Find position by ID
+                pos = next((p for p in portfolio if p.get('id') == collateral_id), None)
+                if pos:
+                    collateral_name = pos.get('name', collateral_id)
+                else:
+                    collateral_name = f'Unknown ({collateral_id[:8]})'
+            elif collateral_id:
+                collateral_name = f'Position {collateral_id[:8]}'
             
             # Calculate cost
             repo_rate = (jibar_rate / 100) + (spread_bps / 10000)
@@ -83,15 +100,20 @@ def calculate_repo_cost_attribution(repo_trades, jibar_rate=8.0):
     }
 
 
-def render_repo_cost_attribution(repo_trades, jibar_rate=6.6):
+def render_repo_cost_attribution(repo_trades, portfolio=None, jibar_rate=6.6):
     """
     Render comprehensive repo cost attribution analysis
+    
+    Args:
+        repo_trades: List of repo trades
+        portfolio: List of portfolio positions (to resolve collateral names)
+        jibar_rate: JIBAR rate in %
     """
     
     st.markdown("##### 💰 Repo Cost Attribution")
     
     # Calculate attribution
-    repo_attr = calculate_repo_cost_attribution(repo_trades, jibar_rate)
+    repo_attr = calculate_repo_cost_attribution(repo_trades, portfolio, jibar_rate)
     
     # Summary metrics
     st.markdown("###### Summary Totals")

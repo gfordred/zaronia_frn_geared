@@ -1,1 +1,16 @@
-[]
+{
+  "trades": [
+    {
+      "id": "REPO_f5c8d018",
+      "trade_date": "2026-03-10",
+      "spot_date": "2026-03-13",
+      "end_date": "2026-04-09",
+      "cash_amount": 100000000.0,
+      "repo_spread_bps": 10.0,
+      "direction": "borrow_cash",
+      "collateral_id": "POS_5455a8b5",
+      "coupon_to_lender": true,
+      "repo_counterparty": "Repo Counterparty A"
+    }
+  ]
+}
