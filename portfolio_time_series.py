@@ -28,9 +28,11 @@ def calculate_daily_portfolio_metrics(portfolio, repo_trades, start_date, end_da
     positions_df['start_date'] = pd.to_datetime(positions_df['start_date'])
     positions_df['maturity'] = pd.to_datetime(positions_df['maturity'])
     
+    # Convert repo trades to DataFrame
     repos_df = pd.DataFrame(repo_trades)
-    repos_df['spot_date'] = pd.to_datetime(repos_df['spot_date'])
-    repos_df['end_date'] = pd.to_datetime(repos_df['end_date'])
+    if not repos_df.empty:
+        repos_df['spot_date'] = pd.to_datetime(repos_df['spot_date'])
+        repos_df['end_date'] = pd.to_datetime(repos_df['end_date'])
     
     # Calculate daily metrics
     daily_data = []
