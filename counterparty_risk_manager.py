@@ -64,7 +64,8 @@ def calculate_counterparty_exposures(portfolio, evaluation_date=None):
         cpty = pos.get('counterparty', 'Unknown')
         notional = pos.get('notional', 0)
         
-        # Check if position is active
+        # Check if position is active on evaluation date
+        # Active = started on or before eval_date AND matures on or after eval_date
         start = pos.get('start_date')
         maturity = pos.get('maturity')
         
@@ -73,7 +74,8 @@ def calculate_counterparty_exposures(portfolio, evaluation_date=None):
         if isinstance(maturity, str):
             maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
         
-        if not (start <= evaluation_date <= maturity):
+        # Position is active if: start_date <= eval_date AND eval_date <= maturity
+        if start > evaluation_date or evaluation_date > maturity:
             continue
         
         # Initialize counterparty if new

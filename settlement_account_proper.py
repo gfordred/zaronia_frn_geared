@@ -59,8 +59,8 @@ def generate_professional_settlement_account(portfolio, repo_trades, seed_capita
     # Load historical JIBAR data for accurate rate lookups
     df_historical = load_historical_jibar()
     
-    # Create daily date range - extend 12 months into future for projections
-    future_end = end_date + timedelta(days=365)
+    # Create daily date range - extend 24 months (2 years) into future for projections
+    future_end = end_date + timedelta(days=730)  # 2 years = 730 days
     date_range = pd.date_range(start=inception_date, end=future_end, freq='D')
     
     daily_ledger = []
