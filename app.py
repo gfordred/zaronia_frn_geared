@@ -2540,9 +2540,17 @@ try:
                 settlement_cash = SEED_CAPITAL + total_repo_cash - total_notional
                 
                 # Balance Sheet Equation: Assets = Liabilities + Equity
-                total_assets = tot_clean + settlement_cash  # Market value of portfolio + cash
+                # Use book value or market value based on valuation method selection
+                if val_method == "Book Value (Notional + Accrued)":
+                    portfolio_value = tot_book
+                    value_type = "Book Value"
+                else:
+                    portfolio_value = tot_clean
+                    value_type = "Market Value"
+                
+                total_assets = portfolio_value + settlement_cash
                 total_liabilities = total_repo_cash  # Repo outstanding
-                net_equity = total_assets - total_liabilities  # NAV = Seed + MTM P&L
+                net_equity = total_assets - total_liabilities  # NAV
                 gearing = total_repo_cash / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
                 
                 # Display balance sheet
@@ -2551,12 +2559,16 @@ try:
                 with col1:
                     st.markdown("**ASSETS**")
                     st.metric("Total Assets", f"R{total_assets/1e6:.1f}M")
-                    st.caption(f"Portfolio MV: R{tot_clean/1e6:.1f}M")
+                    st.caption(f"Portfolio {value_type}: R{portfolio_value/1e6:.1f}M")
                     st.caption(f"Settlement Cash: R{settlement_cash/1e6:.1f}M")
-                    mtm_loss = tot_clean - total_notional
-                    mtm_pct = (mtm_loss / total_notional * 100) if total_notional > 0 else 0
-                    st.caption(f"Notional: R{total_notional/1e6:.0f}M")
-                    st.caption(f"MTM P&L: R{mtm_loss/1e6:.1f}M ({mtm_pct:+.1f}%)", help="Mark-to-market gain/loss vs notional")
+                    
+                    if val_method != "Book Value (Notional + Accrued)":
+                        mtm_loss = tot_clean - total_notional
+                        mtm_pct = (mtm_loss / total_notional * 100) if total_notional > 0 else 0
+                        st.caption(f"Notional: R{total_notional/1e6:.0f}M")
+                        st.caption(f"MTM P&L: R{mtm_loss/1e6:.1f}M ({mtm_pct:+.1f}%)", help="Mark-to-market gain/loss vs notional")
+                    else:
+                        st.caption(f"Notional: R{total_notional/1e6:.0f}M")
                 
                 with col2:
                     st.markdown("**LIABILITIES**")

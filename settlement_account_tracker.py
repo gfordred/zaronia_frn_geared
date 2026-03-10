@@ -292,9 +292,9 @@ def render_settlement_account_tracker(portfolio, repo_trades, seed_capital=100_0
     fig.add_trace(go.Scatter(
         x=df_settlement['Date'],
         y=df_settlement['Settlement Balance'] / 1e6,
-        mode='lines+markers',
+        mode='lines',
         name='Cash Balance',
-        line=dict(color='#00d4ff', width=3),
+        line=dict(color='#00d4ff', width=3, shape='hv'),  # 'hv' creates step chart (horizontal then vertical)
         fill='tozeroy',
         fillcolor='rgba(0, 212, 255, 0.2)',
         hovertemplate='<b>%{x}</b><br>Balance: R%{y:.1f}M<extra></extra>'
