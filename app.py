@@ -3014,6 +3014,72 @@ try:
                                           key="repo_collat")
                 repo_cpn_to_lender = st.checkbox("Coupon to Cash Lender", value=False, key="repo_cpn")
                 
+                # Calculate and display repo details
+                st.markdown("---")
+                st.markdown("##### 📊 Repo Calculation Details")
+                
+                # Get JIBAR rate from trade date
+                jibar_rate = rates.get('JIBAR3M', 6.6)
+                
+                # Calculate gross repo rate
+                gross_repo_rate = jibar_rate + (repo_spread / 100)
+                
+                # Calculate days and interest
+                days = (repo_end - repo_spot).days
+                year_fraction = days / 365.0
+                interest = repo_cash * (gross_repo_rate / 100) * year_fraction
+                total_repayment = repo_cash + interest
+                
+                # Display calculations
+                col_calc1, col_calc2, col_calc3 = st.columns(3)
+                
+                with col_calc1:
+                    st.metric("JIBAR 3M (Trade Date)", f"{jibar_rate:.2f}%")
+                    st.caption(f"From: {repo_trade_dt}")
+                
+                with col_calc2:
+                    st.metric("Repo Spread", f"{repo_spread:.0f} bps")
+                    st.caption(f"= {repo_spread/100:.2f}%")
+                
+                with col_calc3:
+                    st.metric("Gross Repo Rate", f"{gross_repo_rate:.2f}%")
+                    st.caption(f"JIBAR + Spread")
+                
+                st.markdown("###### Interest Calculation")
+                st.code(f"""
+Principal:        R{repo_cash:,.0f}
+Repo Rate:        {gross_repo_rate:.4f}%
+Days:             {days} days
+Year Fraction:    {year_fraction:.6f}
+
+Interest = Principal × Rate × Time
+         = R{repo_cash:,.0f} × {gross_repo_rate:.4f}% × {year_fraction:.6f}
+         = R{interest:,.2f}
+
+Total Repayment = Principal + Interest
+                = R{repo_cash:,.0f} + R{interest:,.2f}
+                = R{total_repayment:,.2f}
+""")
+                
+                st.markdown("###### Cashflow Summary")
+                
+                if repo_dir == "borrow_cash":
+                    cf_data = [
+                        {"Date": repo_spot, "Type": "Near Leg", "Description": "Receive cash (borrow)", "Cash IN": repo_cash, "Cash OUT": 0},
+                        {"Date": repo_end, "Type": "Far Leg", "Description": "Repay principal + interest", "Cash IN": 0, "Cash OUT": total_repayment}
+                    ]
+                else:
+                    cf_data = [
+                        {"Date": repo_spot, "Type": "Near Leg", "Description": "Pay cash (lend)", "Cash IN": 0, "Cash OUT": repo_cash},
+                        {"Date": repo_end, "Type": "Far Leg", "Description": "Receive principal + interest", "Cash IN": total_repayment, "Cash OUT": 0}
+                    ]
+                
+                df_cf = pd.DataFrame(cf_data)
+                st.dataframe(df_cf.style.format({
+                    'Cash IN': 'R{:,.0f}',
+                    'Cash OUT': 'R{:,.0f}'
+                }), use_container_width=True, hide_index=True)
+                
                 if st.button("Add Repo Trade", key="btn_add_repo"):
                     repo_data = {
                         'id': repo_id,
