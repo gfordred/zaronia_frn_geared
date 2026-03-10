@@ -2517,8 +2517,9 @@ try:
                     total_value = tot_clean
                     value_label = "Total Market Value (Clean)"
                 
-                # Show summary with selected columns
-                df_display = df_summary[display_cols]
+                # Filter to only columns that exist in the dataframe
+                available_cols = [col for col in display_cols if col in df_summary.columns]
+                df_display = df_summary[available_cols]
                 st.dataframe(df_display, use_container_width=True, hide_index=True)
                 
                 # Show total

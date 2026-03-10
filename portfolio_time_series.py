@@ -96,6 +96,10 @@ def render_portfolio_time_series(portfolio, repo_trades):
     
     st.markdown("### 📊 Portfolio Time Series Analytics")
     
+    if not portfolio:
+        st.warning("No portfolio positions to display.")
+        return
+    
     st.info("""
     **Daily Portfolio Metrics:**
     - Portfolio notional and composition evolution
@@ -140,7 +144,8 @@ def render_portfolio_time_series(portfolio, repo_trades):
     
     # Calculate daily metrics
     with st.spinner("Calculating daily portfolio metrics..."):
-        df_daily = calculate_daily_portfolio_metrics(portfolio, repo_trades, start_date, end_date_input)
+    # Calculate daily metrics for selected range
+    df_daily = calculate_daily_portfolio_metrics(portfolio, repo_trades, start_date, end_date_input)
     
     if df_daily.empty:
         st.warning("No data for selected date range.")
