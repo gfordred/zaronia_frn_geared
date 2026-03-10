@@ -155,9 +155,8 @@ def get_cache_key(settlement_date, nominal, lookback, zaronia_spread):
 # -----------------------------------------------------------------------------
 # Portfolio JSON helpers
 # -----------------------------------------------------------------------------
-PORTFOLIO_FILE = "portfolio.json"
+PORTFOLIO_FILE = "portfolio_positions.json"
 REPO_FILE = "repo_trades.json"
-CPTY_FILE = "counterparties.json"
 NCD_PRICING_FILE = "ncd_pricing.json"
 
 def load_portfolio():
@@ -2733,9 +2732,16 @@ try:
                 # Date selector
                 col1, col2 = st.columns(2)
                 with col1:
+                    # Ensure default value is within min/max range
+                    default_date = date.today() - timedelta(days=30)
+                    if default_date < inception_date:
+                        default_date = inception_date
+                    if default_date > date.today():
+                        default_date = date.today()
+                    
                     selected_date = st.date_input(
                         "Select Historical Date",
-                        value=date.today() - timedelta(days=30),
+                        value=default_date,
                         min_value=inception_date,
                         max_value=date.today(),
                         key="time_travel_date"
