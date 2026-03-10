@@ -1028,13 +1028,14 @@ def calculate_dv01_cs01(nominal, issue_spread, dm, start, end,
         zaronia_spread_bps, lookback, df_hist, df_zaronia,
         zaronia_dict, jibar_dict, return_df=False)
 
-    # DV01
+    # DV01 - shift projection curve only, keep discount base curve unshifted
+    # This prevents double-application of shifts when DM spread is added inside price_frn
     shifted_jibar, _, _ = build_jibar_curve(eval_date, rates_dict, shift_bps=1.0)
     shifted_proj = (build_zaronia_curve_daily(shifted_jibar, zaronia_spread_bps, settlement, day_count)
                     if index_type == 'ZARONIA' else shifted_jibar)
     _, _, shifted_clean, _ = price_frn(
         nominal, issue_spread, dm, start, end,
-        shifted_proj, shifted_jibar, settlement,
+        shifted_proj, disc_base_curve, settlement,  # ← Use unshifted disc_base_curve
         day_count, calendar, index_type,
         zaronia_spread_bps, lookback, df_hist, df_zaronia,
         zaronia_dict, jibar_dict, return_df=False)
