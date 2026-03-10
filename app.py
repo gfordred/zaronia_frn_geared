@@ -212,15 +212,6 @@ def save_repo_trades(trades: list):
     """Save repo trades to JSON."""
     save_json_file(REPO_FILE, {"trades": trades})
 
-def load_counterparties():
-    """Load counterparty metadata from JSON."""
-    data = load_json_file(CPTY_FILE, {"counterparties": []})
-    return data.get("counterparties", [])
-
-def save_counterparties(cptys: list):
-    """Save counterparty metadata to JSON."""
-    save_json_file(CPTY_FILE, {"counterparties": cptys})
-
 def load_ncd_pricing():
     """Load NCD pricing data."""
     default = {
@@ -2474,21 +2465,17 @@ try:
                 total_notional = sum(p.get('notional', 0) for p in portfolio_positions)
                 SEED_CAPITAL = 100_000_000  # R100M
                 
-                # Calculate settlement account cash
-                # Cash IN: Repo borrowing (R900M)
-                # Cash OUT: Portfolio purchases at notional (R1,000M)
-                # Net settlement cash = Borrowed - Spent = R900M - R1,000M = -R100M
-                # But we also have seed capital (R100M) which covers this
-                # So actual settlement cash = Seed + Repo - Portfolio = R100M + R900M - R1,000M = R0
-                
-                # For now, settlement cash represents uninvested/undeployed cash
-                # If we borrowed R900M but only bought R632.9M (MV), we have R267.1M cash
-                settlement_cash = total_repo_cash - tot_clean  # Cash not yet deployed into bonds
+                # Balance Sheet Calculation
+                # Settlement Cash = Seed Capital + Repo Borrowing - Portfolio Purchases (at notional)
+                # Example 1: No repo, R100M portfolio -> Cash = R100M + R0 - R100M = R0
+                # Example 2: R900M repo, R1000M portfolio -> Cash = R100M + R900M - R1000M = R0
+                # Example 3: R900M repo, R632M portfolio -> Cash = R100M + R900M - R632M = R368M
+                settlement_cash = SEED_CAPITAL + total_repo_cash - total_notional
                 
                 # Balance Sheet Equation: Assets = Liabilities + Equity
                 total_assets = tot_clean + settlement_cash  # Market value of portfolio + cash
                 total_liabilities = total_repo_cash  # Repo outstanding
-                net_equity = total_assets - total_liabilities  # NAV
+                net_equity = total_assets - total_liabilities  # NAV = Seed + MTM P&L
                 gearing = total_repo_cash / SEED_CAPITAL if SEED_CAPITAL > 0 else 0
                 
                 # Display balance sheet
