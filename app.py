@@ -1142,10 +1142,11 @@ def remove_position_from_portfolio(instrument_id):
 
 
 def get_portfolio_summary(positions, proj_curve, disc_curve, settlement, day_count, calendar,
-                          zaronia_spread_bps, df_hist, df_zaronia, eval_date, rates_dict):
+                          zaronia_spread_bps, df_hist, df_zaronia, eval_date, rates_dict, ncd_pricing=None):
     """Calculate portfolio-level aggregations and risk."""
     summary_rows = []
     total_clean = 0.0
+    total_book = 0.0
     total_dv01 = 0.0
     total_cs01 = 0.0
     kr_totals = {}
@@ -1158,13 +1159,39 @@ def get_portfolio_summary(positions, proj_curve, disc_curve, settlement, day_cou
             idx_type = pos.get('index_type', 'JIBAR 3M')
             p_curve = build_zaronia_curve_daily(proj_curve, zaronia_spread_bps, settlement, day_count) if idx_type == 'ZARONIA' else proj_curve
             
+            # Market value using DM from position (or NCD spread if available)
+            dm_market = pos['dm']
+            
+            # Try to get NCD spread for counterparty if available
+            if ncd_pricing and 'historical_pricing' in ncd_pricing:
+                current_date_str = ncd_pricing.get('current_date', date.today().isoformat())
+                if current_date_str in ncd_pricing['historical_pricing']:
+                    cpty = pos.get('counterparty', '')
+                    # Map counterparty to bank name
+                    bank_map = {
+                        'ABSA': 'ABSA',
+                        'Standard Bank': 'Standard Bank',
+                        'Nedbank': 'Nedbank',
+                        'FirstRand': 'FirstRand',
+                        'Investec': 'Investec'
+                    }
+                    bank = bank_map.get(cpty)
+                    if bank and bank in ncd_pricing['historical_pricing'][current_date_str]:
+                        # Use 2Y NCD spread as DM proxy
+                        ncd_spreads = ncd_pricing['historical_pricing'][current_date_str][bank]
+                        if '2 Years' in ncd_spreads:
+                            dm_market = ncd_spreads['2 Years']
+            
             dirty, acc, clean, _ = price_frn(
-                pos['notional'], pos['issue_spread'], pos['dm'],
+                pos['notional'], pos['issue_spread'], dm_market,
                 pos['start_date'], pos['maturity'],
                 p_curve, disc_curve, settlement,
                 day_count, calendar, idx_type,
                 zaronia_spread_bps, pos.get('lookback', 0),
                 df_hist, df_zaronia, zaronia_dict, jibar_dict, return_df=False)
+            
+            # Book value = notional + accrued interest
+            book_value = pos['notional'] + acc
 
             dv01, cs01 = calculate_dv01_cs01(
                 pos['notional'], pos['issue_spread'], pos['dm'],
@@ -1186,6 +1213,7 @@ def get_portfolio_summary(positions, proj_curve, disc_curve, settlement, day_cou
 
             # Aggregate
             total_clean += clean
+            total_book += book_value
             total_dv01 += dv01
             total_cs01 += cs01
             for tenor, val in kr_dv01.items():
@@ -1199,6 +1227,7 @@ def get_portfolio_summary(positions, proj_curve, disc_curve, settlement, day_cou
                 'Index': idx_type,
                 'Issue Spread': pos['issue_spread'],
                 'DM': pos['dm'],
+                'Book Value': book_value,
                 'Clean': clean,
                 'Accrued': acc,
                 'Dirty': dirty,
@@ -1212,7 +1241,7 @@ def get_portfolio_summary(positions, proj_curve, disc_curve, settlement, day_cou
         except Exception as e:
             st.warning(f"Failed to price position {pos.get('id')}: {e}")
 
-    return pd.DataFrame(summary_rows), total_clean, total_dv01, total_cs01, kr_totals
+    return pd.DataFrame(summary_rows), total_clean, total_book, total_dv01, total_cs01, kr_totals
 
 
 # =============================================================================
@@ -2450,12 +2479,40 @@ try:
             with portfolio_tabs[0]:
                 st.markdown("##### Current Portfolio Valuation")
                 
-                df_summary, tot_clean, tot_dv01, tot_cs01, kr_tots = get_portfolio_summary(
+                # Load NCD pricing for DM lookup
+                ncd_pricing = load_ncd_pricing()
+                
+                # Radio button to select valuation method
+                val_method = st.radio(
+                    "Valuation Method",
+                    ["Market Value (Swap Curve + NCD Spreads)", "Book Value (Notional + Accrued)"],
+                    horizontal=True,
+                    key="valuation_method"
+                )
+                
+                df_summary, tot_clean, tot_book, tot_dv01, tot_cs01, kr_tots = get_portfolio_summary(
                     portfolio_positions, jibar_curve, jibar_curve, settlement,
                     day_count, calendar, zaronia_spread_bps,
-                    df_historical, df_zaronia, evaluation_date, rates)
+                    df_historical, df_zaronia, evaluation_date, rates, ncd_pricing)
                 
-                st.dataframe(df_summary, use_container_width=True, hide_index=True)
+                # Select columns based on valuation method
+                if val_method == "Book Value (Notional + Accrued)":
+                    display_cols = ['ID', 'Name', 'Notional', 'Maturity', 'Index', 'Issue Spread', 
+                                   'Book Value', 'Accrued', 'Counterparty']
+                    total_value = tot_book
+                    value_label = "Total Book Value"
+                else:
+                    display_cols = ['ID', 'Name', 'Notional', 'Maturity', 'Index', 'Issue Spread', 'DM',
+                                   'Clean', 'Accrued', 'Dirty', 'DV01', 'CS01', 'Counterparty']
+                    total_value = tot_clean
+                    value_label = "Total Market Value (Clean)"
+                
+                # Show summary with selected columns
+                df_display = df_summary[display_cols]
+                st.dataframe(df_display, use_container_width=True, hide_index=True)
+                
+                # Show total
+                st.metric(value_label, f"R{total_value/1e6:.2f}M")
                 
                 # Asset/Liability Breakdown
                 st.markdown("##### 📊 Balance Sheet Summary")
