@@ -52,7 +52,6 @@ def render_easy_portfolio_editor(portfolio, save_callback):
         
         if st.button("➕ Add Position", type="primary", key="quick_add_btn"):
             # Calculate settlement date (T+3)
-            from datetime import date, timedelta
             trade_date = date.today()
             settlement_date = trade_date + timedelta(days=3)
             
