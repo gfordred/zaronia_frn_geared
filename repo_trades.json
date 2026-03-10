@@ -1,11 +1,1 @@
 []
-    "spot_date": "2026-03-04",
-    "end_date": "2026-06-02",
-    "cash_amount": 110000000,
-    "repo_spread_bps": 10,
-    "direction": "borrow_cash",
-    "collateral_id": "4668f21d-3c60-41f2-a7fc-154067c736e1",
-    "collateral_name": "Absa FRN 2028",
-    "coupon_to_lender": false
-  }
-]
