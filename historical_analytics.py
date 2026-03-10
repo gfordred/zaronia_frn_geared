@@ -533,7 +533,7 @@ def render_portfolio_composition_over_time(portfolio, start_date, end_date):
     st.plotly_chart(fig_bar, use_container_width=True)
 
 
-def render_yield_evolution(portfolio, jibar_rate=8.0):
+def render_yield_evolution(portfolio, repo_trades, start_date, end_date, jibar_rate=6.6):
     """
     Render gross yield evolution by position
     """
