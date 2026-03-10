@@ -2,7 +2,7 @@
   "positions": [
     {
       "id": "POS_5455a8b5",
-      "name": "fff",
+      "name": "ABSA NCD 1",
       "counterparty": "ABSA",
       "book": "ABSA",
       "notional": 100000000.0,
@@ -13,8 +13,7 @@
       "issue_spread": 100.0,
       "dm": 100.0,
       "index": "JIBAR 3M",
-      "lookback": 0,
-      "strategy": "Core"
+      "lookback": 0
     }
   ]
 }

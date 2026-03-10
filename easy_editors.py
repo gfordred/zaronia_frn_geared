@@ -51,12 +51,19 @@ def render_easy_portfolio_editor(portfolio, save_callback):
                 key="quick_add_book")
         
         if st.button("➕ Add Position", type="primary", key="quick_add_btn"):
+            # Calculate settlement date (T+3)
+            from datetime import date, timedelta
+            trade_date = date.today()
+            settlement_date = trade_date + timedelta(days=3)
+            
             new_pos = {
                 'id': f'POS_{uuid.uuid4().hex[:8]}',
                 'name': new_name if new_name else f"{new_cpty}_FRN_{new_maturity.year}",
                 'counterparty': new_cpty,
                 'book': new_book,
                 'notional': new_notional * 1e6,
+                'trade_date': str(trade_date),
+                'settlement_date': str(settlement_date),
                 'start_date': new_start,
                 'maturity': new_maturity,
                 'issue_spread': new_issue_spread,
