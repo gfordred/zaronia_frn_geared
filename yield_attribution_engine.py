@@ -342,7 +342,17 @@ def render_yield_attribution(portfolio, repo_trades, jibar_rate=6.6):
     scenario_data = []
     
     for g in gearing_scenarios:
-        scenario_net_yield = metrics['jibar_rate'] + (metrics['avg_frn_spread']/100) + (metrics['spread_pickup']/100 * g) - (metrics['avg_repo_spread']/100 * g)
+        # At gearing=1x (ungeared): Net Yield = JIBAR + FRN Spread
+        # At gearing>1x: Net Yield = JIBAR + FRN Spread + (Spread Pickup × (Gearing - 1))
+        # This accounts for the fact that at 1x gearing, you're not borrowing anything
+        if g == 1:
+            # Ungeared: just the FRN yield
+            scenario_net_yield = metrics['jibar_rate'] + (metrics['avg_frn_spread']/100)
+        else:
+            # Geared: FRN yield + gearing benefit from leverage
+            gearing_benefit = (metrics['spread_pickup']/100) * (g - 1)
+            scenario_net_yield = metrics['jibar_rate'] + (metrics['avg_frn_spread']/100) + gearing_benefit
+        
         scenario_data.append({
             'Gearing': f"{g}x",
             'Net Yield (%)': scenario_net_yield

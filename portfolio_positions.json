@@ -6,6 +6,8 @@
       "counterparty": "ABSA",
       "book": "ABSA",
       "notional": 100000000.0,
+      "trade_date": "2026-03-10",
+      "settlement_date": "2026-03-13",
       "start_date": "2026-03-10",
       "maturity": "2029-03-09",
       "issue_spread": 100.0,
