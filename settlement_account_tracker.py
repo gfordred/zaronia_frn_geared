@@ -46,8 +46,18 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
         all_dates.append(spot)
         all_dates.append(end)
     
+    # If no trades, return simple seed capital entry
     if not all_dates:
-        return pd.DataFrame()
+        inception_date = date(2024, 1, 1)  # Default inception
+        return pd.DataFrame([{
+            'Date': inception_date,
+            'Type': 'Seed Capital',
+            'Description': 'Initial capital injection',
+            'Cash IN': seed_capital,
+            'Cash OUT': 0,
+            'Net Cashflow': seed_capital,
+            'Settlement Balance': seed_capital
+        }])
     
     inception_date = min(all_dates)
     end_date = date.today()
