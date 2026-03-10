@@ -1223,6 +1223,8 @@ def get_portfolio_summary(positions, proj_curve, disc_curve, settlement, day_cou
                 'ID': pos['id'],
                 'Name': pos.get('name', pos['id']),
                 'Notional': pos['notional'],
+                'Trade Date': pos.get('trade_date', ''),
+                'Settlement Date': pos.get('settlement_date', ''),
                 'Maturity': pos['maturity'],
                 'Index': idx_type,
                 'Issue Spread': pos['issue_spread'],
@@ -2444,12 +2446,18 @@ try:
                         key="quick_add_book")
                 
                 if st.button("➕ Add Position", type="primary", key="quick_add_btn"):
+                    # Calculate settlement date (T+3)
+                    trade_date = date.today()
+                    settlement_date = trade_date + timedelta(days=3)
+                    
                     new_pos = {
                         'id': f'POS_{uuid.uuid4().hex[:8]}',
                         'name': new_name if new_name else f"{new_cpty}_FRN_{new_maturity.year}",
                         'counterparty': new_cpty,
                         'book': new_book,
                         'notional': new_notional * 1e6,
+                        'trade_date': str(trade_date),
+                        'settlement_date': str(settlement_date),
                         'start_date': str(new_start),
                         'maturity': str(new_maturity),
                         'issue_spread': new_issue_spread,
@@ -2497,13 +2505,13 @@ try:
                 
                 # Select columns based on valuation method
                 if val_method == "Book Value (Notional + Accrued)":
-                    display_cols = ['ID', 'Name', 'Notional', 'Maturity', 'Index', 'Issue Spread', 
-                                   'Book Value', 'Accrued', 'Counterparty']
+                    display_cols = ['ID', 'Name', 'Notional', 'Trade Date', 'Settlement Date', 'Maturity', 
+                                   'Index', 'Issue Spread', 'Book Value', 'Accrued', 'Counterparty']
                     total_value = tot_book
                     value_label = "Total Book Value"
                 else:
-                    display_cols = ['ID', 'Name', 'Notional', 'Maturity', 'Index', 'Issue Spread', 'DM',
-                                   'Clean', 'Accrued', 'Dirty', 'DV01', 'CS01', 'Counterparty']
+                    display_cols = ['ID', 'Name', 'Notional', 'Trade Date', 'Settlement Date', 'Maturity', 
+                                   'Index', 'Issue Spread', 'DM', 'Clean', 'Accrued', 'Dirty', 'DV01', 'CS01', 'Counterparty']
                     total_value = tot_clean
                     value_label = "Total Market Value (Clean)"
                 

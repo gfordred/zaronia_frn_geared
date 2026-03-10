@@ -60,7 +60,8 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
         }])
     
     inception_date = min(all_dates)
-    end_date = date.today()
+    # Extend to 2 years in future for projections
+    end_date = date.today() + timedelta(days=730)
     
     # Generate daily cashflows
     cashflows = []
@@ -109,6 +110,37 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
             'Cash OUT': notional,
             'Net Cashflow': -notional
         })
+    
+    # FRN Coupons (cash IN) - quarterly payments every 91 days
+    for pos in portfolio:
+        start = pos.get('start_date')
+        maturity = pos.get('maturity')
+        if isinstance(start, str):
+            start = datetime.strptime(start, '%Y-%m-%d').date()
+        if isinstance(maturity, str):
+            maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
+        
+        notional = pos.get('notional', 0)
+        spread = pos.get('issue_spread', 0)
+        
+        # Generate quarterly coupon dates (every 91 days from start)
+        current_coupon_date = start + timedelta(days=91)
+        while current_coupon_date <= min(maturity, end_date):
+            # Estimate coupon: (JIBAR + spread) * notional * (91/365)
+            jibar_rate = 6.6 / 100  # Default JIBAR
+            coupon_rate = jibar_rate + (spread / 10000)
+            coupon_amount = notional * coupon_rate * (91 / 365.0)
+            
+            cashflows.append({
+                'Date': current_coupon_date,
+                'Type': 'FRN Coupon',
+                'Description': f"{pos.get('name', 'Unknown')} - Quarterly coupon",
+                'Cash IN': coupon_amount,
+                'Cash OUT': 0,
+                'Net Cashflow': coupon_amount
+            })
+            
+            current_coupon_date += timedelta(days=91)
     
     # Repo repayments (far leg - cash OUT)
     for repo in repo_trades:
