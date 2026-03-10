@@ -45,11 +45,14 @@ def calculate_daily_portfolio_metrics(portfolio, repo_trades, start_date, end_da
         ]
         
         # Active repos
-        active_repos = repos_df[
-            (repos_df['spot_date'] <= current_date) & 
-            (repos_df['end_date'] >= current_date) &
-            (repos_df['direction'] == 'borrow_cash')
-        ]
+        if not repos_df.empty:
+            active_repos = repos_df[
+                (repos_df['spot_date'] <= current_date) & 
+                (repos_df['end_date'] >= current_date) &
+                (repos_df['direction'] == 'borrow_cash')
+            ]
+        else:
+            active_repos = pd.DataFrame()
         
         # Metrics
         total_notional = active_positions['notional'].sum() if len(active_positions) > 0 else 0
