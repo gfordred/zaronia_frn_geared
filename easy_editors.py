@@ -67,9 +67,6 @@ def render_easy_portfolio_editor(portfolio, save_callback):
             current_positions = portfolio.copy()
             current_positions.append(new_pos)
             save_callback(current_positions)
-            # Preserve active tab (Edit Portfolio is tab 6 in portfolio_tabs)
-            if 'active_tab' in st.session_state:
-                pass  # Tab already set, don't change
             st.success(f"✅ Added: {new_pos['name']}")
             st.rerun()
     

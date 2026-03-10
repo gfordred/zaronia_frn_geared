@@ -1487,10 +1487,9 @@ try:
     # SECTION 7: UI LAYOUT - ALL TABS
     # =========================================================================
     
-    # Initialize active tab in session state
-    if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = 0
-    
+    # Tabs - Streamlit manages tab state automatically
+    # Note: st.tabs does not support programmatic tab selection
+    # Users must manually click tabs to navigate
     tabs = st.tabs([
         "Market Data",
         "Curve Analysis", 
@@ -2470,7 +2469,6 @@ try:
                     }
                     portfolio_positions.append(new_pos)
                     save_portfolio(portfolio_positions)
-                    st.session_state.active_tab = 5  # Stay on Portfolio Manager tab
                     st.success(f"✅ Added: {new_pos['name']}")
                     st.rerun()
         else:
@@ -3110,7 +3108,6 @@ Total Repayment = Principal + Interest
                     trades = load_repo_trades()
                     trades.append(repo_data)
                     save_repo_trades(trades)
-                    st.session_state.active_tab = 6  # Stay on Repo Trades tab
                     st.success(f"✅ Added repo trade {repo_id}")
                     st.rerun()
     
@@ -3182,7 +3179,6 @@ Total Repayment = Principal + Interest
             }
             ncd_data['current_date'] = selected_date_str
             save_ncd_pricing(ncd_data)
-            st.session_state.active_tab = 7  # Stay on NCD Pricing tab
             st.success(f"NCD pricing saved for {selected_date_str}!")
             st.rerun()
         
