@@ -2399,8 +2399,46 @@ try:
             # Still show add position form
             st.markdown("#### Add Position")
             with st.expander("➕ Add New Position", expanded=True):
-                # ... keep existing add position code ...
-                pass
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    new_name = st.text_input("Name", value="", key="quick_add_name")
+                    new_cpty = st.selectbox("Counterparty", 
+                        ['ABSA', 'Standard Bank', 'Nedbank', 'FirstRand', 'Investec', 'Republic of SA'],
+                        key="quick_add_cpty")
+                    new_notional = st.number_input("Notional (millions)", value=100.0, step=10.0, key="quick_add_not")
+                
+                with col2:
+                    new_start = st.date_input("Start Date", value=date.today(), key="quick_add_start")
+                    new_maturity = st.date_input("Maturity", value=date.today() + timedelta(days=365*3), key="quick_add_mat")
+                    new_issue_spread = st.number_input("Issue Spread (bps)", value=100.0, step=5.0, key="quick_add_iss")
+                
+                with col3:
+                    new_dm = st.number_input("DM (bps)", value=100.0, step=5.0, key="quick_add_dm")
+                    new_index = st.selectbox("Index", ['JIBAR 3M', 'ZARONIA'], key="quick_add_idx")
+                    new_book = st.selectbox("Book", 
+                        ['ABSA', 'Rand Merchant Bank', 'Nedbank', 'Standard Bank', 'Investec', 'Government'],
+                        key="quick_add_book")
+                
+                if st.button("➕ Add Position", type="primary", key="quick_add_btn"):
+                    new_pos = {
+                        'id': f'POS_{uuid.uuid4().hex[:8]}',
+                        'name': new_name if new_name else f"{new_cpty}_FRN_{new_maturity.year}",
+                        'counterparty': new_cpty,
+                        'book': new_book,
+                        'notional': new_notional * 1e6,
+                        'start_date': str(new_start),
+                        'maturity': str(new_maturity),
+                        'issue_spread': new_issue_spread,
+                        'dm': new_dm,
+                        'index': new_index,
+                        'lookback': 0,
+                        'strategy': 'Core'
+                    }
+                    portfolio_positions.append(new_pos)
+                    save_portfolio(portfolio_positions)
+                    st.success(f"✅ Added: {new_pos['name']}")
+                    st.rerun()
         else:
             # Create comprehensive sub-tabs
             portfolio_tabs = st.tabs([
