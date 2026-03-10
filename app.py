@@ -513,7 +513,9 @@ if input_mode == "Historical Time Series" and df_historical is not None:
         selected_date_val = historical_row['Date'].date()
         st.sidebar.warning(f"No exact match. Using nearest: {selected_date_val}")
 
-evaluation_date = st.sidebar.date_input("Evaluation Date", value=selected_date_val)
+# Portfolio values as of TODAY by default - use Time Travel tab for historical/future dates
+evaluation_date = date.today()
+st.sidebar.info(f"📅 **Valuation Date:** {evaluation_date.strftime('%Y-%m-%d')} (Today)\n\nUse **Time Travel** tab to view portfolio at past/future dates.")
 
 # Defaults
 defaults = {
