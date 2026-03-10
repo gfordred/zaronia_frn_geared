@@ -60,8 +60,30 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
         }])
     
     inception_date = min(all_dates)
-    # Extend to 2 years in future for projections
-    end_date = date.today() + timedelta(days=730)
+    
+    # Calculate max projection date: max of all asset maturities and repo far legs
+    max_dates = []
+    
+    # Get max maturity from portfolio
+    for pos in portfolio:
+        maturity = pos.get('maturity')
+        if isinstance(maturity, str):
+            maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
+        max_dates.append(maturity)
+    
+    # Get max repo far leg date
+    for repo in repo_trades:
+        end = repo.get('end_date')
+        if isinstance(end, str):
+            end = datetime.strptime(end, '%Y-%m-%d').date()
+        max_dates.append(end)
+    
+    # Extend to max date + 1 year for post-maturity visibility
+    if max_dates:
+        end_date = max(max_dates) + timedelta(days=365)
+    else:
+        # Fallback: 2 years from today if no maturities
+        end_date = date.today() + timedelta(days=730)
     
     # Generate daily cashflows
     cashflows = []
