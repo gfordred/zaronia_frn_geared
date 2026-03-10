@@ -14,6 +14,21 @@
       "dm": 100.0,
       "index": "JIBAR 3M",
       "lookback": 0
+    },
+    {
+      "id": "POS_288bf02a",
+      "name": "NBK221B",
+      "counterparty": "Nedbank",
+      "book": "Nedbank",
+      "notional": 100000000.0,
+      "trade_date": "2026-03-10",
+      "settlement_date": "2026-03-13",
+      "start_date": "2026-03-13",
+      "maturity": "2029-03-13",
+      "issue_spread": 100.0,
+      "dm": 100.0,
+      "index": "JIBAR 3M",
+      "lookback": 0
     }
   ]
 }

@@ -141,63 +141,141 @@ def calculate_settlement_account_history(portfolio, repo_trades, seed_capital=10
             'Cash OUT': notional,
             'Net Cashflow': -notional
         })
-    
-    # FRN Coupons (cash IN) - quarterly payments using forward JIBAR rates
-    for pos in portfolio:
-        start = pos.get('start_date')
-        maturity = pos.get('maturity')
-        if isinstance(start, str):
-            start = datetime.strptime(start, '%Y-%m-%d').date()
-        if isinstance(maturity, str):
-            maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
         
-        notional = pos.get('notional', 0)
+        # Generate coupon cashflows for each position
+        start_date_str = pos.get('start_date')
+        maturity_str = pos.get('maturity')
         spread = pos.get('issue_spread', 0)
+        pos_name = pos.get('name', pos.get('id', 'Unknown'))
         
-        # Generate quarterly coupon dates
-        prev_coupon_date = start
-        current_coupon_date = start + timedelta(days=91)
+        if not start_date_str or not maturity_str:
+            continue
         
-        while current_coupon_date <= min(maturity, end_date):
-            # Calculate actual days in coupon period
-            actual_days = (current_coupon_date - prev_coupon_date).days
-            year_fraction = actual_days / 365.0
+        # Parse dates
+        if isinstance(start_date_str, str):
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            start_date = start_date_str
+        
+        if isinstance(maturity_str, str):
+            maturity_date = datetime.strptime(maturity_str, '%Y-%m-%d').date()
+        else:
+            maturity_date = maturity_str
+        
+        # Generate quarterly coupons (every ~91 days)
+        current_coupon_date = start_date
+        prev_coupon_date = start_date
+        
+        while current_coupon_date < end_date:
+            # Next coupon date (approximately 3 months)
+            current_coupon_date = prev_coupon_date + timedelta(days=91)
             
-            # Use forward JIBAR rate if curve available, else fallback to spot
-            if jibar_curve:
-                try:
-                    import QuantLib as ql
-                    from src.core.daycount import get_act365_daycount
+            # Don't go past maturity
+            if current_coupon_date > maturity_date:
+                # Add final coupon at maturity if we haven't reached it yet
+                if maturity_date <= end_date and maturity_date > prev_coupon_date:
+                    try:
+                        import QuantLib as ql
+                        from src.core.daycount import get_act365_daycount
+                        
+                        # Convert to QuantLib dates
+                        ql_start = ql.Date(prev_coupon_date.day, prev_coupon_date.month, prev_coupon_date.year)
+                        ql_end = ql.Date(maturity_date.day, maturity_date.month, maturity_date.year)
+                        day_count = get_act365_daycount()
+                        
+                        # Get forward JIBAR rate for this period
+                        jibar_fwd = jibar_curve.forwardRate(ql_start, ql_end, day_count, ql.Simple).rate()
+                        
+                        actual_days = (maturity_date - prev_coupon_date).days
+                        year_fraction = actual_days / 365.0
+                        coupon_rate = jibar_fwd + (spread / 10000)
+                        coupon_amount = notional * coupon_rate * year_fraction
+                        
+                        cashflows.append({
+                            'Date': maturity_date,
+                            'Type': 'FRN Coupon',
+                            'Description': f'{pos_name} - Final Coupon (JIBAR fwd {jibar_fwd*100:.2f}% + {spread:.0f}bps)',
+                            'Days': actual_days,
+                            'Cash IN': coupon_amount,
+                            'Cash OUT': 0,
+                            'Net Cashflow': coupon_amount,
+                            'Settlement Account': coupon_amount
+                        })
+                    except Exception:
+                        actual_days = (maturity_date - prev_coupon_date).days
+                        year_fraction = actual_days / 365.0
+                        coupon_rate = (6.6 / 100) + (spread / 10000)
+                        coupon_amount = notional * coupon_rate * year_fraction
+                        
+                        cashflows.append({
+                            'Date': maturity_date,
+                            'Type': 'FRN Coupon',
+                            'Description': f'{pos_name} - Final Coupon (JIBAR {6.6:.2f}% + {spread:.0f}bps)',
+                            'Days': actual_days,
+                            'Cash IN': coupon_amount,
+                            'Cash OUT': 0,
+                            'Net Cashflow': coupon_amount,
+                            'Settlement Account': coupon_amount
+                        })
                     
-                    # Convert dates to QuantLib
-                    ql_start = ql.Date(prev_coupon_date.day, prev_coupon_date.month, prev_coupon_date.year)
-                    ql_end = ql.Date(current_coupon_date.day, current_coupon_date.month, current_coupon_date.year)
-                    day_count = get_act365_daycount()
-                    
-                    # Get forward JIBAR rate for this period
-                    jibar_fwd = jibar_curve.forwardRate(ql_start, ql_end, day_count, ql.Simple).rate()
-                except:
-                    # Fallback to spot rate
-                    jibar_fwd = 6.6 / 100
-            else:
-                jibar_fwd = 6.6 / 100  # Default JIBAR
+                    # Add principal repayment at maturity
+                    cashflows.append({
+                        'Date': maturity_date,
+                        'Type': 'Principal Repayment',
+                        'Description': f'{pos_name} - Maturity (Principal)',
+                        'Days': 0,
+                        'Cash IN': notional,
+                        'Cash OUT': 0,
+                        'Net Cashflow': notional,
+                        'Settlement Account': notional
+                    })
+                break
             
-            # Calculate coupon: (Forward JIBAR + spread) * notional * year_fraction
-            coupon_rate = jibar_fwd + (spread / 10000)
-            coupon_amount = notional * coupon_rate * year_fraction
-            
-            cashflows.append({
-                'Date': current_coupon_date,
-                'Type': 'FRN Coupon',
-                'Description': f"{pos.get('name', 'Unknown')} - Coupon (JIBAR fwd {jibar_fwd*100:.2f}% + {spread}bps)",
-                'Days': actual_days,
-                'Cash IN': coupon_amount,
-                'Cash OUT': 0,
-                'Net Cashflow': coupon_amount
-            })
+            # Calculate coupon using forward JIBAR rate
+            try:
+                # Convert to QuantLib dates
+                ql_start = ql.Date(prev_coupon_date.day, prev_coupon_date.month, prev_coupon_date.year)
+                ql_end = ql.Date(current_coupon_date.day, current_coupon_date.month, current_coupon_date.year)
+                
+                # Get forward JIBAR rate for this period
+                day_count = get_act365_daycount()
+                jibar_fwd = jibar_curve.forwardRate(ql_start, ql_end, day_count, ql.Simple).rate()
+                
+                # Calculate coupon
+                actual_days = (current_coupon_date - prev_coupon_date).days
+                year_fraction = actual_days / 365.0
+                coupon_rate = jibar_fwd + (spread / 10000)
+                coupon_amount = notional * coupon_rate * year_fraction
+                
+                cashflows.append({
+                    'Date': current_coupon_date,
+                    'Type': 'FRN Coupon',
+                    'Description': f'{pos_name} - Coupon (JIBAR fwd {jibar_fwd*100:.2f}% + {spread:.0f}bps)',
+                    'Days': actual_days,
+                    'Cash IN': coupon_amount,
+                    'Cash OUT': 0,
+                    'Net Cashflow': coupon_amount,
+                    'Settlement Account': coupon_amount
+                })
+            except Exception as e:
+                # Fallback to default JIBAR if forward rate fails
+                actual_days = (current_coupon_date - prev_coupon_date).days
+                year_fraction = actual_days / 365.0
+                coupon_rate = (6.6 / 100) + (spread / 10000)
+                coupon_amount = notional * coupon_rate * year_fraction
+                
+                cashflows.append({
+                    'Date': current_coupon_date,
+                    'Type': 'FRN Coupon',
+                    'Description': f'{pos_name} - Coupon (JIBAR {6.6:.2f}% + {spread:.0f}bps)',
+                    'Days': actual_days,
+                    'Cash IN': coupon_amount,
+                    'Cash OUT': 0,
+                    'Net Cashflow': coupon_amount,
+                    'Settlement Account': coupon_amount
+                })
             
             prev_coupon_date = current_coupon_date
-            current_coupon_date += timedelta(days=91)
     
     # Repo repayments (far leg - cash OUT)
     for repo in repo_trades:
